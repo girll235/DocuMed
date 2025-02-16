@@ -2,20 +2,308 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+body {
+  font-family: Arial, Helvetica, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
+@layer components {
+  .patient-record,
+  .doc-insertion {
+    @apply p-5 font-sans;
+  }
+
+  .patient-card,
+  .doc-insertion-card {
+    @apply bg-white border border-gray-200 rounded-lg shadow-md;
+  }
+
+  .patient-header,
+  .doc-insertion-header {
+    @apply flex items-center mb-5;
+  }
+
+  .patient-image {
+    @apply rounded-full w-[150px] h-[150px] object-cover mr-5;
+  }
+
+  .patient-info,
+  .doc-insertion-info {
+    @apply flex-1;
+  }
+
+  .patient-info h1,
+  .doc-insertion-info h1 {
+    @apply m-0 text-2xl font-bold;
+  }
+
+  .edit-button,
+  .submit-button {
+    @apply mt-2;
+  }
+
+  .patient-details,
+  .doc-insertion-form {
+    @apply mb-8;
+  }
+
+  .medical-history {
+    @apply mb-8;
+  }
+
+  .medical-history ul {
+    @apply list-none p-0;
+  }
+
+  .record-item {
+    @apply border border-gray-200 rounded-md p-4 mb-4;
+  }
+
+  .loading-message,
+  .error-message {
+    @apply text-center text-2xl text-blue-600;
+  }
+
+  .error-message {
+    @apply text-red-600;
+  }
+
+  .insert-diagnosis-btn {
+    @apply block w-full py-2 px-4 text-lg font-bold;
+  }
+  .layout {
+    @apply flex flex-col min-h-screen;
+  }
+
+  .main-content {
+    @apply flex-grow;
+  }
+
+  /* Page Components */
+  .page-container {
+    @apply container mx-auto px-4 py-16;
+  }
+
+  .page-content {
+    @apply max-w-3xl mx-auto;
+  }
+
+  /* Typography */
+  .page-title {
+    @apply text-4xl font-bold text-center mb-8;
+  }
+
+  .section-title {
+    @apply text-2xl font-semibold mt-8 mb-4;
+  }
+  .nav-link {
+    @apply text-blue-600 hover:text-blue-800 transition-colors;
+  }
+
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors;
+  }
+
+  .btn-danger {
+    @apply bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition-colors;
+  }
+
+  .card-container {
+    @apply bg-white rounded-lg shadow-md p-6 transition duration-300 hover:shadow-lg;
+  }
+  .contact-icon {
+    @apply h-6 w-6 text-blue-500;
+  }
+
+  .contact-section {
+    @apply flex items-start space-x-3;
+  }
+
+  .contact-title {
+    @apply font-semibold;
+  }
+
+  .contact-text {
+    @apply text-gray-600;
+  }
+  .appointment-table {
+    @apply min-w-full divide-y divide-gray-200;
+  }
+
+  .appointment-header {
+    @apply bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
+  }
+
+  .appointment-cell {
+    @apply px-6 py-4 whitespace-nowrap;
+  }
+
+  .status-pending {
+    @apply text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full text-sm;
+  }
+
+  .status-approved {
+    @apply text-green-600 bg-green-100 px-2 py-1 rounded-full text-sm;
+  }
+
+  .status-rejected {
+    @apply text-red-600 bg-red-100 px-2 py-1 rounded-full text-sm;
+  }
+
+  .status-delayed {
+    @apply text-orange-600 bg-orange-100 px-2 py-1 rounded-full text-sm;
+  }
+  .auth-card {
+    @apply bg-white rounded-lg shadow-md p-8 w-full max-w-md mx-auto;
+  }
+
+  .auth-input {
+    @apply mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm 
+    focus:outline-none focus:ring-blue-500 focus:border-blue-500;
+  }
+
+  .auth-button {
+    @apply w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm 
+    font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 
+    focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .medical-record-card {
+    @apply bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow duration-200;
+  }
+
+  .info-label {
+    @apply text-sm font-medium text-gray-500;
+  }
+
+  .info-value {
+    @apply text-base text-gray-900;
+  }
+
+  .record-meta {
+    @apply flex items-center gap-2 text-sm text-gray-500;
+  }
+
+  .tab-content {
+    @apply mt-6 space-y-6;
+  }
+  .tabs-container {
+    @apply w-full;
+  }
+
+  .tabs-list {
+    @apply flex space-x-1 rounded-xl bg-blue-900/20 p-1;
+  }
+
+  .tabs-trigger {
+    @apply w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-blue-700
+    ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none 
+    focus:ring-2 data-[state=active]:bg-white data-[state=active]:shadow-lg;
+  }
+
+  .tabs-content {
+    @apply mt-6 rounded-xl bg-white p-3;
+  }
+  .appointment-card-status {
+    @apply absolute top-0 right-0 w-2 h-full transition-all duration-300;
+  }
+
+  .appointment-info-item {
+    @apply flex items-center space-x-2 text-gray-600 group-hover:text-blue-600 transition-colors;
+  }
+
+  .appointment-meta {
+    @apply flex items-center text-sm text-gray-500;
+  }
+}
+
+@layer utilities {
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-800;
+  }
+  .form-input-transition {
+    @apply transition-all duration-200 ease-in-out;
+  }
+  
+  .form-section-hover {
+    @apply hover:shadow-md transition-shadow duration-200;
+  }
+  .form-field {
+    @apply transition-all duration-200 hover:border-blue-400 focus:border-blue-500 focus:ring-blue-200;
+  }
+
+  .form-field-error {
+    @apply border-red-500 ring-red-200;
+  }
+
+  .form-section {
+    @apply space-y-6 pt-6;
+  }
+
+  .form-section-title {
+    @apply text-lg font-semibold text-gray-900 border-b pb-2;
+  }
+}
+
