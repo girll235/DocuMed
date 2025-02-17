@@ -1,10 +1,13 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Doctor, Specialty, Clinic } from "@/types"
+import { useRouter } from "next/navigation"
 import { ROUTES } from "@/lib/constants"
 import { useEffect, useState } from "react"
 import { doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { toast } from "react-hot-toast"
+import { Button } from "@/components/ui/button"
 
 interface DoctorCardProps {
   doctor: Doctor
@@ -14,7 +17,7 @@ interface DoctorCardProps {
 export const DoctorCard = ({ doctor, patientId }: DoctorCardProps) => {
   const [specialty, setSpecialty] = useState<Specialty | null>(null)
   const [clinic, setClinic] = useState<Clinic | null>(null)
-
+  const router = useRouter()
   useEffect(() => {
     const fetchRelatedData = async () => {
       try {
@@ -40,13 +43,26 @@ export const DoctorCard = ({ doctor, patientId }: DoctorCardProps) => {
 
     fetchRelatedData()
   }, [doctor.specialtyId, doctor.clinicId])
+  const handleBookAppointment = () => {
+    if (!patientId) {
+      toast.error("Please log in to book an appointment")
+      router.push(ROUTES.LOGIN)
+      return
+    }
 
+    const queryParams = new URLSearchParams({
+      doctorId: doctor.id,
+      patientId: patientId
+    }).toString()
+
+    router.push(`${ROUTES.MAKE_APPOINTMENT}?${queryParams}`)
+  }
   return (
     <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
       <div className="flex items-start space-x-4">
         <div className="relative w-24 h-24">
           <Image
-            src={doctor.photoURL || "/default-doctor.jpg"}
+            src={doctor.photoURL || "/profile/profile.jpg"}
             alt={`${doctor.displayName} ${doctor.surname}`}
             fill
             className="rounded-full object-cover"
@@ -78,15 +94,12 @@ export const DoctorCard = ({ doctor, patientId }: DoctorCardProps) => {
               </p>
             )}
           </div>
-          <Link
-            href={{
-              pathname: ROUTES.MAKE_APPOINTMENT,
-              query: { doctorId: doctor.id, patientId }
-            }}
-            className="mt-4 inline-block px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
-          >
-            Book Appointment
-          </Link>
+          <Button
+        onClick={handleBookAppointment}
+        className="mt-4 w-full bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
+      >
+        Book Appointment
+      </Button>
         </div>
       </div>
     </div>

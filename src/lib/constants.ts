@@ -5,19 +5,20 @@ export const COLLECTIONS = {
     USERS: 'users',
     DOCTORS: 'doctors',
     PATIENTS: 'patients',
-    APPOINTMENTS: 'patientAppointments',
+    APPOINTMENTS: 'appointments', // Changed from 'patientAppointments'
     MEDICAL_RECORDS: 'medicalRecords',
     SPECIALTIES: 'specialties',
     CLINICS: 'clinics'
   } as const;
   
-export const APPOINTMENT_STATUS = {
-    PENDING: 'pending',
-    APPROVED: 'approved',
-    REJECTED: 'rejected',
-    CANCELLED: 'cancelled',
-    COMPLETED: 'completed',
-    RESCHEDULED: 'rescheduled'
+  export const APPOINTMENT_STATUS = {
+    PENDING: 'PENDING',
+    APPROVED: 'APPROVED',
+    REJECTED: 'REJECTED',
+    CANCELLED: 'CANCELLED',
+    COMPLETED: 'COMPLETED',
+    RESCHEDULED: 'RESCHEDULED',
+    ONGOING: 'ONGOING'  // Add this new status
   } as const;
 
   export const USER_ROLES = {
@@ -35,22 +36,33 @@ export const APPOINTMENT_STATUS = {
   
   
   export const ROUTES = {
+    // Auth & General Routes
     HOME: "/",
     LOGIN: "/login",
     SIGNUP: "/signup",
-    APPOINTMENTS: "/appointments",
-    MAKE_APPOINTMENT: "/appointments/new",
+    CONTACT: "/contact",
+    PRICING: "/pricing",
+  
+    // Dashboard Routes
     ADMIN_DASHBOARD: "/admin-dashboard",
-    DOC_DASHBOARD: "/doc-dashboard", // Changed from "/doctor/dashboard"
+    DOC_DASHBOARD: "/doc-dashboard",
+    CLIENT_DASHBOARD: "/client-dashboard",
+  
+    // Medical Records & Patient Routes
     PATIENT_RECORD: "/patient-record",
-    CLIENT_DASHBOARD: "/client-dashboard", // Changed from "/client/dashboard"
-    DOC_INSERTION: "/doc-insertion",
+    MEDICAL_RECORDS: "/medical-records/edit", // Changed from DOC_INSERTION
+    
+    // Appointment Routes
+    APPOINTMENTS: "/appointments",
+    MAKE_APPOINTMENT: "/make-appointment",
+  
+    // Settings & Parameters Routes
+    DOC_PARAMS: "/doc-params",
+    CLIENT_PARAMS: "/client-params",
+  
+    // Registration Routes
     DOC_SIGNUP: "/doc-signup",
     CLIENT_SIGNUP: "/client-signup",
-    CONTACT: "/contact",
-    DOC_PARAMS: "/doc-params",
-    PRICING: "/pricing",
-    CLIENT_PARAMS: "/client-params",
   } as const;
   
   export const APP_METADATA = {

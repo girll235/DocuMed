@@ -52,7 +52,7 @@ const Home = () => {
             className="md:w-1/2"
           >
             <Image
-              src="/hero-image.jpg"
+              src="/home/doctori.png"
               alt="Healthcare Professional"
               width={600}
               height={500}
@@ -182,7 +182,7 @@ const Home = () => {
             </motion.div>
         </div>
       </section>
-      // Add after the Values Section and before the For Doctors Section
+      
 
       {/* Pricing Section */}
       <section className="py-24 bg-gradient-to-b from-white to-blue-50">
@@ -316,7 +316,7 @@ const Home = () => {
                 className="md:w-1/2"
               >
                 <Image
-                  src="/doctor-dashboard.jpg"
+                  src="/home/doctor.jpg"
                   alt="Doctor Dashboard"
                   width={500}
                   height={300}
@@ -356,7 +356,7 @@ const Home = () => {
               className="md:w-1/2"
             >
               <Image
-                src="/patient-dashboard.jpg"
+                src="/home/pat.jpg"
                 alt="Patient Dashboard"
                 width={500}
                 height={300}
@@ -372,7 +372,7 @@ const Home = () => {
 
 const features = [
   {
-    icon: "/icons/calendar.svg",
+    icon: "/icons/calender.svg",
     title: "Easy Scheduling",
     description: "Book appointments with your preferred healthcare providers at your convenience."
   },

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Formik, Form, Field } from "formik"
@@ -68,101 +69,153 @@ const LogIn = () => {
     }
   }
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-4">
-            <Image
-              src="/logo.jpg"
-              alt="DocuMed Logo"
-              width={64}
-              height={64}
-              className="rounded-full"
-            />
-          </div>
-          <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
-          <p className="text-sm text-gray-600">
-            Enter your credentials to access your account
-          </p>
-        </CardHeader>
-        <CardContent>
-          <Formik
-            initialValues={{ email: "", password: "" }}
-            validationSchema={loginSchema}
-            onSubmit={handleSubmit}
-          >
-            {({ errors, touched }) => (
-              <Form className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Field
-                    as={Input}
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    className={errors.email && touched.email ? "border-red-500" : ""}
-                  />
-                  {errors.email && touched.email && (
-                    <p className="text-red-500 text-sm">{errors.email}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Field
-                    as={Input}
-                    id="password"
-                    name="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    className={errors.password && touched.password ? "border-red-500" : ""}
-                  />
-                  {errors.password && touched.password && (
-                    <p className="text-red-500 text-sm">{errors.password}</p>
-                  )}
-                </div>
-
-                <Button 
-                  type="submit" 
-                  className="w-full"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Logging in...
-                    </>
-                  ) : (
-                    "Log In"
-                  )}
-                </Button>
-              </Form>
-            )}
-          </Formik>
-
-          <div className="mt-4 text-center text-sm">
-            <Link 
-              href={ROUTES.HOME} 
-              className="text-blue-600 hover:text-blue-800 hover:underline"
-            >
-              Forgot password?
-            </Link>
-          </div>
-
-          <div className="mt-6 text-center text-sm">
-            <p className="text-gray-600">
-              Don't have an account?{" "}
-              <Link 
-                href="/signup" 
-                className="text-blue-600 hover:text-blue-800 hover:underline"
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md"
+      >
+        <Card className="border-0 shadow-xl overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-8 text-center">
+            <div className="flex justify-center mb-6">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                transition={{ duration: 0.2 }}
               >
-                Sign up
-              </Link>
+                <Image
+                  src="/logo/logo.png"
+                  alt="DocuMed Logo"
+                  width={80}
+                  height={80}
+                  className="rounded-full ring-4 ring-white/30"
+                />
+              </motion.div>
+            </div>
+            <CardTitle className="text-3xl font-bold mb-2">Welcome Back</CardTitle>
+            <p className="text-blue-100">
+              Enter your credentials to access your account
             </p>
-          </div>
-        </CardContent>
-      </Card>
+          </CardHeader>
+
+          <CardContent className="p-8">
+            <Formik
+              initialValues={{ email: "", password: "" }}
+              validationSchema={loginSchema}
+              onSubmit={handleSubmit}
+            >
+              {({ errors, touched }) => (
+                <Form className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-gray-700">
+                      Email Address
+                    </Label>
+                    <Field
+                      as={Input}
+                      id="email"
+                      name="email"
+                      type="email"
+                      placeholder="Enter your email"
+                      className={`transition-all duration-200 ${
+                        errors.email && touched.email
+                          ? "border-red-500 focus:ring-red-200"
+                          : "hover:border-blue-400 focus:border-blue-500 focus:ring-blue-200"
+                      }`}
+                    />
+                    {errors.email && touched.email && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-red-500 text-sm"
+                      >
+                        {errors.email}
+                      </motion.p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-gray-700">
+                      Password
+                    </Label>
+                    <Field
+                      as={Input}
+                      id="password"
+                      name="password"
+                      type="password"
+                      placeholder="Enter your password"
+                      className={`transition-all duration-200 ${
+                        errors.password && touched.password
+                          ? "border-red-500 focus:ring-red-200"
+                          : "hover:border-blue-400 focus:border-blue-500 focus:ring-blue-200"
+                      }`}
+                    />
+                    {errors.password && touched.password && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-red-500 text-sm"
+                      >
+                        {errors.password}
+                      </motion.p>
+                    )}
+                  </div>
+
+                  <motion.div
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                  >
+                    <Button
+                      type="submit"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <div className="flex items-center justify-center">
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          <span>Logging in...</span>
+                        </div>
+                      ) : (
+                        "Log In"
+                      )}
+                    </Button>
+                  </motion.div>
+                </Form>
+              )}
+            </Formik>
+
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-sm">
+                <Link
+                  href={ROUTES.HOME}
+                  className="text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <div className="text-sm">
+                <Link
+                  href="/signup"
+                  className="text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  Create account
+                </Link>
+              </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <p className="text-center text-sm text-gray-600">
+                Don't have an account?{" "}
+                <Link
+                  href="/signup"
+                  className="font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  Sign up for free
+                </Link>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   )
 }

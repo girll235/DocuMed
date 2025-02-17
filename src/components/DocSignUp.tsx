@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { motion } from "framer-motion"
+import { initializeDatabase } from "@/scripts/initializeDatabase"
 import { Formik, Form, FieldArray, FormikTouched, FormikErrors } from "formik"
 import Image from "next/image"
 import Link from "next/link"
@@ -27,171 +29,224 @@ import {
 } from "@/components/ui/select"
 
 const DocSignUp = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [specialties, setSpecialties] = useState<Specialty[]>([]);
-  const [clinics, setClinics] = useState<Clinic[]>([]);
-  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false)
+  const [dataLoading, setDataLoading] = useState(true)
+  const [specialties, setSpecialties] = useState<Specialty[]>([])
+  const [clinics, setClinics] = useState<Clinic[]>([])
+  const router = useRouter()
+
+  const handleSubmit = async (values: DoctorSignUpFormData) => {
+    setIsLoading(true)
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password)
+      const user = userCredential.user
+
+      await updateProfile(user, {
+        displayName: `${values.displayName} ${values.surname}`
+      })
+
+      await setDoc(doc(db, COLLECTIONS.USERS, user.uid), {
+        ...values,
+        password: undefined,
+        confirmPassword: undefined,
+        role: USER_ROLES.DOCTOR,
+        uid: user.uid,
+        createdAt: new Date().toISOString()
+      })
+
+      toast.success("Registration successful!")
+      router.push(ROUTES.LOGIN)
+    } catch (error) {
+      console.error("Registration error:", error)
+      toast.error("Failed to create account. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
     const fetchData = async () => {
+      setDataLoading(true)
       try {
+        // Check if collections exist first
         const [specialtiesSnap, clinicsSnap] = await Promise.all([
           getDocs(collection(db, COLLECTIONS.SPECIALTIES)),
           getDocs(collection(db, COLLECTIONS.CLINICS))
-        ]);
+        ])
 
-        setSpecialties(specialtiesSnap.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Specialty[]);
+        if (specialtiesSnap.empty || clinicsSnap.empty) {
+          console.error("Required collections are empty")
+          // Initialize database if collections are empty
+          await initializeDatabase()
+          
+          // Fetch data again after initialization
+          const [newSpecialtiesSnap, newClinicsSnap] = await Promise.all([
+            getDocs(collection(db, COLLECTIONS.SPECIALTIES)),
+            getDocs(collection(db, COLLECTIONS.CLINICS))
+          ])
 
-        setClinics(clinicsSnap.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Clinic[]);
+          setSpecialties(newSpecialtiesSnap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Specialty[])
+
+          setClinics(newClinicsSnap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Clinic[])
+        } else {
+          setSpecialties(specialtiesSnap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Specialty[])
+
+          setClinics(clinicsSnap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Clinic[])
+        }
       } catch (error) {
-        console.error("Error fetching data:", error);
-        toast.error("Failed to load required data");
+        console.error("Error fetching data:", error)
+        toast.error("Failed to load required data. Please try again.")
+      } finally {
+        setDataLoading(false)
       }
-    };
-    fetchData();
-  }, []);
-
-  const handleSubmit = async (values: DoctorSignUpFormData) => {
-    setIsLoading(true);
-    try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        values.email,
-        values.password
-      );
-
-      if (auth.currentUser) {
-        await updateProfile(auth.currentUser, {
-          displayName: `${values.displayName} ${values.surname}`
-        });
-        await setDoc(doc(db, COLLECTIONS.DOCTORS, userCredential.user.uid), {
-          displayName: values.displayName,
-          surname: values.surname,
-          email: values.email,
-          phoneNumber: values.phoneNumber,
-          specialtyId: values.specialtyId,
-          clinicId: values.clinicId,
-          licenseNumber: values.licenseNumber,
-          education: values.education,
-          experience: values.experience,
-          languages: values.languages,
-          consultationFee: values.consultationFee,
-          bio: values.bio,
-          type: USER_ROLES.DOCTOR,
-          verified: false,
-          available: true,
-          active: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          workingHours: {
-            monday: { start: "09:00", end: "17:00" },
-            tuesday: { start: "09:00", end: "17:00" },
-            wednesday: { start: "09:00", end: "17:00" },
-            thursday: { start: "09:00", end: "17:00" },
-            friday: { start: "09:00", end: "17:00" }
-          }
-        });
-        toast.success("Registration successful!");
-        router.push(ROUTES.DOC_DASHBOARD);
-      }
-    } catch (error) {
-      console.error("Error signing up:", error);
-      toast.error(error instanceof Error ? error.message : "Registration failed");
-    } finally {
-      setIsLoading(false);
     }
-  };
+
+    fetchData()
+  }, [])
+
+  // Show loading state while fetching data
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Loading registration form...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="max-w-md mx-auto">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-between">
-            <Link href={ROUTES.SIGNUP}>
-              <Button variant="ghost" className="flex items-center gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-            </Link>
-            <Image
-              src="/logo.jpg"
-              alt="DocuMed Logo"
-              width={40}
-              height={40}
-              className="rounded-full"
-            />
-          </div>
-          <CardTitle className="text-2xl font-bold text-center">
-            Doctor Registration
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Formik
-            initialValues={initialValues}
-            validationSchema={doctorSignUpSchema}
-            onSubmit={handleSubmit}
-          >
-           {({ values, errors, touched, getFieldProps, setFieldValue }: {
-  values: DoctorSignUpFormData;
-  errors: FormikErrors<DoctorSignUpFormData>;
-  touched: FormikTouched<DoctorSignUpFormData>;
-  getFieldProps: any;
-  setFieldValue: (field: string, value: any) => void;
-}) => (
-              <Form className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="displayName">First Name</Label>
-                    <Input
-                      id="displayName"
-                      {...getFieldProps("displayName")}
-                      className={errors.displayName && touched.displayName ? "border-red-500" : ""}
-                    />
-                    {errors.displayName && touched.displayName && (
-                      <p className="text-red-500 text-sm mt-1">{errors.displayName}</p>
-                    )}
-                  </div>
-                  <div>
-                    <Label htmlFor="surname">Last Name</Label>
-                    <Input
-                      id="surname"
-                      {...getFieldProps("surname")}
-                      className={errors.surname && touched.surname ? "border-red-500" : ""}
-                    />
-                    {errors.surname && touched.surname && (
-                      <p className="text-red-500 text-sm mt-1">{errors.surname}</p>
-                    )}
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-8 px-4 sm:px-6 lg:px-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="max-w-4xl mx-auto"
+      >
+        <Card className="shadow-xl border-0">
+          <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-xl space-y-4 p-8">
+            <div className="flex items-center justify-between">
+              <Link href={ROUTES.SIGNUP}>
+                <Button variant="ghost" className="text-white hover:bg-white/20">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+              </Link>
+              <Image
+                src="/logo/logo.png"
+                alt="DocuMed Logo"
+                width={48}
+                height={48}
+                className="rounded-full ring-2 ring-white/50"
+              />
+            </div>
+            <CardTitle className="text-3xl font-bold text-center">
+              Doctor Registration
+            </CardTitle>
+            <p className="text-blue-100 text-center">
+              Join our network of healthcare professionals
+            </p>
+          </CardHeader>
+
+          <CardContent className="p-8">
+            <Formik
+              initialValues={initialValues}
+              validationSchema={doctorSignUpSchema}
+              onSubmit={handleSubmit}
+            >
+              {({ values, errors, touched, getFieldProps, setFieldValue }) => (
+                <Form className="space-y-8">
+                {/* Personal Information Section */}
+                <div className="space-y-6">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+                    Personal Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Name Fields */}
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="displayName">First Name</Label>
+                        <Input
+                          id="displayName"
+                          {...getFieldProps("displayName")}
+                          className={`transition-all duration-200 ${
+                            errors.displayName && touched.displayName
+                              ? "border-red-500 ring-red-200"
+                              : "hover:border-blue-400 focus:border-blue-500 focus:ring-blue-200"
+                          }`}
+                        />
+                        {errors.displayName && touched.displayName && (
+                          <motion.p
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="text-red-500 text-sm mt-1"
+                          >
+                            {errors.displayName}
+                          </motion.p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <Label htmlFor="surname">Last Name</Label>
+                      <Input
+                        id="surname"
+                        {...getFieldProps("surname")}
+                        className={errors.surname && touched.surname ? "border-red-500" : ""}
+                      />
+                      {errors.surname && touched.surname && (
+                        <p className="text-red-500 text-sm mt-1">{errors.surname}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="specialtyId">Specialty</Label>
-                    <Select
-                      onValueChange={(value) => setFieldValue("specialtyId", value)}
-                      defaultValue={values.specialtyId}
-                    >
-                      <SelectTrigger className={errors.specialtyId && touched.specialtyId ? "border-red-500" : ""}>
-                        <SelectValue placeholder="Select specialty" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {specialties.map((specialty) => (
-                          <SelectItem key={specialty.id} value={specialty.id}>
-                            {specialty.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                      </Select>
-                    {errors.specialtyId && touched.specialtyId && (
-                      <p className="text-red-500 text-sm mt-1">{errors.specialtyId}</p>
-                    )}
-                  </div>
+                <div className="space-y-6 pt-6 border-t">
+                    <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+                      Professional Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Specialty and Clinic Selection */}
+                      <div className="space-y-4">
+                        <Label htmlFor="specialtyId">Specialty</Label>
+                        <Select
+                          onValueChange={(value) => setFieldValue("specialtyId", value)}
+                          defaultValue={values.specialtyId}
+                        >
+                          <SelectTrigger 
+                            className={`transition-all duration-200 ${
+                              errors.specialtyId && touched.specialtyId
+                                ? "border-red-500 ring-red-200"
+                                : "hover:border-blue-400 focus:border-blue-500 focus:ring-blue-200"
+                            }`}
+                          >
+                            <SelectValue placeholder="Select specialty" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {specialties.map((specialty) => (
+                              <SelectItem
+                                key={specialty.id}
+                                value={specialty.id}
+                                className="cursor-pointer hover:bg-blue-50"
+                              >
+                                {specialty.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
                   <div>
                     <Label htmlFor="clinicId">Clinic</Label>
@@ -213,6 +268,7 @@ const DocSignUp = () => {
                     {errors.clinicId && touched.clinicId && (
                       <p className="text-red-500 text-sm mt-1">{errors.clinicId}</p>
                     )}
+                    </div>
                   </div>
                 </div>
 
@@ -268,14 +324,22 @@ const DocSignUp = () => {
                     )}
                   </div>
                 </div>
-                // Add this after the consultation fee field in the form
-<div>
-  <Label>Education</Label>
-  <FieldArray name="education">
-    {({ push, remove }) => (
-      <div className="space-y-4">
-       {values.education.map((edu, index) => (
-  <div key={index} className="space-y-2 p-4 border rounded-md">
+                
+ {/* Education Section */}
+ <div className="space-y-6 pt-6 border-t">
+                    <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+                      Education & Qualifications
+                    </h3>
+                    <FieldArray name="education">
+                      {({ push, remove }) => (
+                        <div className="space-y-4">
+                          {values.education.map((_, index) => (
+                            <motion.div
+                              key={index}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              className="p-4 border rounded-lg bg-gray-50 hover:shadow-md transition-all duration-200"
+                            >
             <div className="flex justify-between">
               <h4>Education #{index + 1}</h4>
               {index > 0 && (
@@ -324,22 +388,22 @@ const DocSignUp = () => {
                 />
               </div>
             </div>
-          </div>
-        ))}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => push({ degree: "", institution: "", year: new Date().getFullYear() })}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Education
-        </Button>
-      </div>
-    )}
-  </FieldArray>
-</div>
+            </motion.div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => push({ degree: "", institution: "", year: new Date().getFullYear() })}
+                            className="w-full border-dashed hover:border-blue-500 hover:text-blue-500 transition-all"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Education
+                          </Button>
+                        </div>
+                      )}
+                    </FieldArray>
+                  </div>
 
-// Update the languages FieldArray section
 <div>
   <Label>Languages</Label>
   <FieldArray name="languages">
@@ -433,27 +497,31 @@ const DocSignUp = () => {
   {errors.confirmPassword && touched.confirmPassword && (
     <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
   )}
-</div>
+  </div>
 
-                  <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Registering...
-                    </>
-                  ) : (
-                    "Register"
-                  )}
-                </Button>
-              </Form>
+  {/* Submit Button */}
+  <div className="pt-6 border-t">
+    <Button
+      type="submit"
+      className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+      disabled={isLoading}
+    >
+      {isLoading ? (
+        <div className="flex items-center justify-center">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <span>Creating Account...</span>
+        </div>
+      ) : (
+        "Complete Registration"
+      )}
+    </Button>
+  </div>
+</Form>
             )}
-          </Formik>
-        </CardContent>
-      </Card>
+            </Formik>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 };

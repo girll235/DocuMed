@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { collection, query, where, getDocs, orderBy, doc, getDoc } from "firebase/firestore"
+import { collection, query, where, getDocs, orderBy, doc, getDoc, updateDoc } from "firebase/firestore"
+import { useUser } from "@/contexts/UserContext"
 import { db } from "@/lib/firebase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MedicalRecord, Patient } from "@/types"
 import { COLLECTIONS, ROUTES } from "@/lib/constants"
@@ -21,7 +23,28 @@ export const PatientRecord = () => {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("overview")
   const router = useRouter()
+  const [isEditing, setIsEditing] = useState(false);
+const { userData, role } = useUser();
+const canEdit = role === 'DOCTOR';
+const canModifyMedicalRecords = role === 'DOCTOR';
 
+
+// Add save changes function
+const handleSaveChanges = async (values: Patient) => {
+  try {
+    const patientRef = doc(db, COLLECTIONS.PATIENTS, values.id);
+    await updateDoc(patientRef, {
+      ...values,
+      updatedAt: new Date(),
+      lastModifiedBy: userData?.id
+    });
+    toast.success('Patient record updated successfully');
+    setIsEditing(false);
+  } catch (error) {
+    console.error('Error updating patient record:', error);
+    toast.error('Failed to update patient record');
+  }
+};
   useEffect(() => {
     const fetchPatientData = async () => {
       setLoading(true)
@@ -70,8 +93,8 @@ export const PatientRecord = () => {
   }, [patientId])
 
   const handleInsertDiagnosis = () => {
-    router.push(`${ROUTES.DOC_INSERTION}?patientId=${patientId}`)
-  }
+    router.push(`${ROUTES.MEDICAL_RECORDS}?patientId=${patientId}`);
+  };
 
   const handleEditInfo = () => {
     router.push(`${ROUTES.CLIENT_DASHBOARD}?patientId=${patientId}`)
@@ -96,14 +119,22 @@ export const PatientRecord = () => {
       </div>
     )
   }
+// Add this function in the PatientRecord component
+const handleEditRecord = async (recordId: string) => {
+  if (!canModifyMedicalRecords) {
+    toast.error("Only doctors can modify medical records");
+    return;
+  }
 
+  router.push(`${ROUTES.MEDICAL_RECORDS}?patientId=${patientId}&recordId=${recordId}`);
+};
   return (
     <div className="container mx-auto p-4 space-y-6">
       <Card>
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row items-start gap-6">
             <Image
-              src={patient?.photoURL || "/default-patient.jpg"}
+              src={patient?.photoURL || "/profile/profile.jpg"}
               alt={patient?.displayName || "Patient"}
               width={200}
               height={200}
@@ -154,32 +185,84 @@ export const PatientRecord = () => {
           <Card>
             <CardHeader>
               <CardTitle>Patient Overview</CardTitle>
+              <div className="flex justify-between items-center">
+  <h1 className="text-3xl font-bold">{patient?.displayName}</h1>
+  {canEdit && (
+    <Button
+      onClick={() => setIsEditing(!isEditing)}
+      variant="outline"
+      className="ml-4"
+    >
+      {isEditing ? 'Cancel Editing' : 'Edit Profile'}
+    </Button>
+  )}
+</div>
+
+<Input
+  value={patient?.phoneNumber}
+  disabled={!isEditing}
+  onChange={(e) => {
+    if (isEditing) {
+      setPatient(prev => ({
+        ...prev!,
+        phoneNumber: e.target.value
+      }));
+    }
+  }}
+/>
+
+
+{isEditing && (
+  <Button
+    onClick={() => handleSaveChanges(patient!)}
+    className="mt-4 bg-blue-600 text-white"
+  >
+    Save Changes
+  </Button>
+)}
             </CardHeader>
             <CardContent>
               {/* Add overview content */}
             </CardContent>
           </Card>
         </TabsContent>
-      <TabsContent value="history" className="mt-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Medical History</CardTitle>
-            <Button onClick={handleInsertDiagnosis}>
-              Add New Record
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {medicalHistory.length > 0 ? (
-              <div className="space-y-6">
-                {medicalHistory.map((record) => (
-                  <Card key={record.id} className="bg-gray-50">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Calendar className="h-5 w-5 text-gray-500" />
-                        <span className="text-sm text-gray-500">
-                          {record.createdAt.toLocaleString()}
-                        </span>
-                      </div>
+        <TabsContent value="history" className="mt-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Medical History</CardTitle>
+              {/* Only show Add New Record button to doctors */}
+              {canModifyMedicalRecords && (
+                <Button onClick={handleInsertDiagnosis}>
+                  Add New Record
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {medicalHistory.length > 0 ? (
+                <div className="space-y-6">
+                  {medicalHistory.map((record) => (
+                    <Card key={record.id} className="bg-gray-50">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between gap-2 mb-4">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-5 w-5 text-gray-500" />
+                            <span className="text-sm text-gray-500">
+                              {record.createdAt.toLocaleString()}
+                            </span>
+                          </div>
+                          {/* Only show edit options to doctors */}
+                          {canModifyMedicalRecords && (
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditRecord(record.id)}
+                              >
+                                Edit Record
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                         
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -227,17 +310,17 @@ export const PatientRecord = () => {
                   </Card>
                 ))}
               </div>
-            ) : (
-              <div className="text-center py-6 text-gray-500">
-                <FileText className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                <p>No medical records available</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </TabsContent>
-      </Tabs>
-    </div>
+           ) : (
+            <div className="text-center py-6 text-gray-500">
+              <FileText className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+              <p>No medical records available</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </TabsContent>
+  </Tabs>
+</div>
   )
 }
 

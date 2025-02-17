@@ -1,18 +1,22 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { onSnapshot } from "firebase/firestore"
 import { collection, getDocs, query, where, orderBy } from "firebase/firestore"
 import Image from "next/image"
 import Link from "next/link"
 import { useUser } from "@/contexts/UserContext"
 import { db } from "@/lib/firebase"
 import { COLLECTIONS, APPOINTMENT_STATUS, ROUTES } from "@/lib/constants"
-import { Appointment } from "@/types"
+import { Appointment, Doctor, Patient, Clinic } from "@/types"
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { format } from "date-fns"
 import { CalendarDays, Clock, MapPin, User2 } from "lucide-react"
 import { toast } from "react-hot-toast"
+import { getStatusColor, getStatusStyle } from "@/lib/utils"
+import { AppointmentStatus } from "@/types"
+import { getStatusIndicatorColor, calculateAge } from "@/lib/utils"
 
 const formatDate = (date: Date | { toDate(): Date } | any): string => {
     try {
@@ -44,52 +48,49 @@ const formatDate = (date: Date | { toDate(): Date } | any): string => {
     }
   }
 
-const getStatusStyle = (status: string) => {
-  const styles: { [key: string]: string } = {
-    [APPOINTMENT_STATUS.PENDING]: "bg-yellow-100 text-yellow-800",
-    [APPOINTMENT_STATUS.APPROVED]: "bg-green-100 text-green-800",
-    [APPOINTMENT_STATUS.REJECTED]: "bg-red-100 text-red-800",
-    [APPOINTMENT_STATUS.RESCHEDULED]: "bg-orange-100 text-orange-800"
-  }
-  return styles[status] || "bg-gray-100 text-gray-800"
-}
-
-export const AppointmentCard = ({ appointment }: { appointment: Appointment }) => {
-  return (
-    <Card className="group hover:shadow-xl transition-all duration-300 border-l-4 relative overflow-hidden"
-      style={{ borderLeftColor: appointment.status === "APPROVED" ? "#22c55e" : 
-               appointment.status === "PENDING" ? "#eab308" : 
-               appointment.status === "REJECTED" ? "#ef4444" : "#f97316" }}
-    >
-      <div className="absolute right-0 top-0 w-24 h-24 opacity-5 group-hover:opacity-10 transition-opacity duration-300">
-        <CalendarDays className="w-full h-full text-current" />
-      </div>
-      
-      <CardContent className="pt-6">
-        <div className="flex flex-col space-y-4">
-          <div className="flex items-start space-x-4">
-            <div className="relative">
-              <Image
-                src={appointment.doctor?.photoURL || "/default-doctor.jpg"}
-                alt={`${appointment.doctor?.displayName} ${appointment.doctor?.surname}`}
-                width={80}
-                height={80}
-                className="rounded-full ring-2 ring-offset-2 ring-blue-100"
-              />
-              <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
-                appointment.status === "APPROVED" ? "bg-green-500" :
-                appointment.status === "PENDING" ? "bg-yellow-500" :
-                appointment.status === "REJECTED" ? "bg-red-500" : "bg-orange-500"
-              }`} />
+  export const AppointmentCard = ({ appointment }: { appointment: Appointment }) => {
+    const { role } = useUser();
+    const displayPerson = role === 'DOCTOR' ? appointment.patient : appointment.doctor;
+  
+    return (
+      <Card className="group hover:shadow-xl transition-all duration-300 border-l-4 relative overflow-hidden"
+        style={{ borderLeftColor: getStatusColor(appointment.status) }}
+      >
+        <CardContent className="pt-6">
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-start space-x-4">
+              <div className="relative">
+                <Image
+                  src={displayPerson?.photoURL || "/profile/profile.jpg"}
+                  alt={displayPerson?.displayName || "Profile"}
+                  width={80}
+                  height={80}
+                  className="rounded-full ring-2 ring-offset-2 ring-blue-100"
+                />
+                <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
+                  getStatusIndicatorColor(appointment.status)
+                }`} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-blue-900 group-hover:text-blue-700 transition-colors">
+                  {role === 'DOCTOR' 
+                    ? displayPerson?.displayName
+                    : `Dr. ${displayPerson?.displayName} ${displayPerson?.displayName}`
+                  }
+                </h3>
+                {role === 'DOCTOR' && appointment.patient?.gender && (
+                  <p className="text-gray-600">
+                    Gender: {appointment.patient.gender}, 
+                    Age: {appointment.patient.dateOfBirth 
+                      ? calculateAge(appointment.patient.dateOfBirth) 
+                      : 'N/A'}
+                  </p>
+                )}
+                {role === 'PATIENT' && appointment.doctor?.specialty && (
+                  <p className="text-blue-600 font-medium">{appointment.doctor.specialty}</p>
+                )}
+              </div>
             </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-blue-900 group-hover:text-blue-700 transition-colors">
-                Dr. {appointment.doctor?.displayName} {appointment.doctor?.surname}
-              </h3>
-              <p className="text-blue-600 font-medium">{appointment.doctor?.specialty}</p>
-            </div>
-          </div>
-
           <div className="grid grid-cols-2 gap-4 mt-4">
             <div className="space-y-3">
               <div className="flex items-center text-gray-600 group-hover:text-blue-600 transition-colors">
@@ -116,13 +117,20 @@ export const AppointmentCard = ({ appointment }: { appointment: Appointment }) =
           </div>
 
           <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusStyle(appointment.status as string)}`}>
-              {appointment.status.toString().charAt(0).toUpperCase() + appointment.status.toString().slice(1)}
-            </span>
-            <span className="text-sm text-gray-500">
-              {appointment.duration} minutes
-            </span>
-          </div>
+  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+    getStatusStyle(appointment.status)
+  }`}>
+    {appointment.status}
+    {appointment.lastModified && (
+      <span className="ml-2 text-xs opacity-75">
+        {format(appointment.lastModified, 'MMM d, h:mm a')}
+      </span>
+    )}
+  </span>
+  <span className="text-sm text-gray-500">
+    {appointment.duration} minutes
+  </span>
+</div>
           {appointment.notes && (
             <div className="mt-4 p-3 bg-gray-50 rounded-lg">
               <p className="text-sm text-gray-600 italic">
@@ -132,80 +140,137 @@ export const AppointmentCard = ({ appointment }: { appointment: Appointment }) =
           )}
         </div>
       </CardContent>
-    </Card>
+      </Card>
   );
 };
 
-const Appointments = () => {
-  const { userData } = useUser()
+export const Appointments = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming")
+  const { userData, role } = useUser()
 
-  const fetchAppointments = async () => {
-    if (!userData?.id) {
-      setError("Please log in to view your appointments.");
-      setLoading(false);
-      return;
-    }
   
-    try {
-      const appointmentsCollection = collection(db, COLLECTIONS.APPOINTMENTS);
-      const q = query(
-        appointmentsCollection, 
-        where("patientId", "==", userData.id),
-        orderBy("appointmentDate", "desc")
-      );
-      
-      const [appointmentsSnapshot, doctorsSnapshot, clinicsSnapshot] = await Promise.all([
-        getDocs(q),
-        getDocs(collection(db, COLLECTIONS.DOCTORS)),
-        getDocs(collection(db, COLLECTIONS.CLINICS))
-      ]);
   
-      const doctors: { [key: string]: any } = doctorsSnapshot.docs.reduce((acc, doc) => ({
-        ...acc,
-        [doc.id]: doc.data()
-      }), {});
+  useEffect(() => {
+    if (!userData?.id) return;
   
-      const clinics: { [key: string]: { name: string; address: string } } = clinicsSnapshot.docs.reduce((acc, doc) => ({
-        ...acc,
-        [doc.id]: doc.data()
-      }), {});
+    setLoading(true);
+    const appointmentsRef = collection(db, COLLECTIONS.APPOINTMENTS);
+    
+    // Create query based on user role
+    const q = role === 'DOCTOR' 
+      ? query(
+          appointmentsRef,
+          where("doctorId", "==", userData.id),
+          orderBy("appointmentDate", "desc")
+        )
+      : query(
+          appointmentsRef,
+          where("patientId", "==", userData.id),
+          orderBy("appointmentDate", "desc")
+        );
   
-      if (appointmentsSnapshot.empty) {
-        setError("No appointments found.");
-      } else {
-        const appointmentsList = appointmentsSnapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            appointmentDate: data.appointmentDate.toDate(),
-            doctor: doctors[data.doctorId] ? {
-              name: doctors[data.doctorId].name,
-              surname: doctors[data.doctorId].surname,
-              specialty: doctors[data.doctorId].specialty,
-              photoUrl: doctors[data.doctorId].photoUrl
-            } : undefined,
-            clinic: clinics[data.clinicId] ? {
-              name: clinics[data.clinicId].name,
-              address: clinics[data.clinicId].address
-            } : undefined
-          } as Appointment;
-        });
-        
-        setAppointments(appointmentsList);
+    const unsubscribe = onSnapshot(
+      q,
+      {
+        next: async (appointmentsSnapshot) => {
+          try {
+            if (!appointmentsSnapshot.empty) {
+              const [doctorsSnapshot, clinicsSnapshot, patientsSnapshot] = await Promise.all([
+                getDocs(collection(db, COLLECTIONS.DOCTORS)),
+                getDocs(collection(db, COLLECTIONS.CLINICS)),
+                getDocs(collection(db, COLLECTIONS.PATIENTS))
+              ]);
+  
+              // Update the lookup maps creation
+const doctors: Record<string, Doctor> = Object.fromEntries(
+  doctorsSnapshot.docs.map(doc => [
+    doc.id,
+    { id: doc.id, ...doc.data() } as Doctor
+  ])
+);
+
+const patients: Record<string, Patient> = Object.fromEntries(
+  patientsSnapshot.docs.map(doc => [
+    doc.id,
+    { id: doc.id, ...doc.data() } as Patient
+  ])
+);
+
+const clinics: Record<string, Clinic> = Object.fromEntries(
+  clinicsSnapshot.docs.map(doc => [
+    doc.id,
+    { id: doc.id, ...doc.data() } as Clinic
+  ])
+);
+             // Update the appointments mapping section
+             const appointmentsList = appointmentsSnapshot.docs.map((doc) => {
+              const data = doc.data();
+              const appointment: Appointment = {
+                id: doc.id,
+                patientId: data.patientId,
+                doctorId: data.doctorId,
+                clinicId: data.clinicId,
+                appointmentDate: data.appointmentDate.toDate(),
+                duration: data.duration,
+                type: data.type,
+                symptoms: data.symptoms,
+                notes: data.notes,
+                cancelledBy: data.cancelledBy,
+                cancelReason: data.cancelReason,
+                status: data.status as AppointmentStatus,
+                lastModified: data.lastModified?.toDate(),
+                modifiedBy: data.modifiedBy,
+                createdAt: data.createdAt.toDate(),
+                updatedAt: data.updatedAt.toDate(),
+                patient: patients[data.patientId] ? {
+                  displayName: patients[data.patientId].displayName,
+                  photoURL: patients[data.patientId].photoURL,
+                  gender: patients[data.patientId].gender,
+                  dateOfBirth: patients[data.patientId].dateOfBirth instanceof Date 
+                    ? patients[data.patientId].dateOfBirth 
+                    : new Date(patients[data.patientId].dateOfBirth) // Convert to Date directly
+                } : undefined,
+                doctor: doctors[data.doctorId] ? {
+                  displayName: doctors[data.doctorId].displayName,
+                  surname: doctors[data.doctorId].surname,
+                  specialty: doctors[data.doctorId].specialtyId,
+                  photoURL: doctors[data.doctorId].photoURL
+                } : undefined,
+                clinic: clinics[data.clinicId] ? {
+                  name: clinics[data.clinicId].name,
+                  address: clinics[data.clinicId].address
+                } : undefined
+              };
+              
+              return appointment;
+            });
+  
+              setAppointments(appointmentsList);
+              setError(null);
+            } else {
+              setAppointments([]);
+              setError("No appointments found.");
+            }
+          } catch (error) {
+            console.error('Error processing appointments:', error);
+            setError('Failed to load appointments. Please try again later.');
+          } finally {
+            setLoading(false);
+          }
+        },
+        error: (error) => {
+          console.error('Error in appointments subscription:', error);
+          setError('Failed to load appointments. Please try again later.');
+          setLoading(false);
+        }
       }
-    } catch (error) {
-      console.error('Error fetching appointments:', error);
-      setError('Failed to fetch appointments. Please try again later.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+    );
+  
+    return () => unsubscribe();
+  }, [userData?.id, role]);
   const getStatusStyle = (status: string) => {
     const styles: { [key: string]: string } = {
       [APPOINTMENT_STATUS.PENDING]: "bg-yellow-100 text-yellow-800",

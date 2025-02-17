@@ -20,7 +20,7 @@ import { COLLECTIONS } from "@/lib/constants"
 
 export const ClientParams = () => {
   const { userData } = useUser()
-  const [formValues, setFormValues] = useState(initialValues)
+  const [formValues, setFormValues] = useState<ClientFormValues>(initialValues)
   const [isSaving, setIsSaving] = useState(false)
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [passwords, setPasswords] = useState({

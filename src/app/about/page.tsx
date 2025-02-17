@@ -1,6 +1,11 @@
 import About from "@/components/About"
-import type { PageProps } from "@/types"
+import { Metadata } from "next"
 
-export default function AboutPage(_props: PageProps) {
+export const metadata: Metadata = {
+  title: 'About | DocuMed',
+  description: 'Learn more about DocuMed healthcare management system',
+}
+
+export default function AboutPage() {
   return <About />
 }

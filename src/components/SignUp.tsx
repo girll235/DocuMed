@@ -47,7 +47,7 @@ const SignUp = () => {
         <div className="container mx-auto flex justify-between items-center">
           <Link href={ROUTES.HOME} className="flex items-center space-x-2">
             <Image 
-              src="/logo.jpg" 
+              src="/logo/logo.png" 
               alt="DocuMed Logo" 
               width={40} 
               height={40} 

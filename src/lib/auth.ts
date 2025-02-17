@@ -15,42 +15,54 @@ import { USER_ROLES, AUTH_ERRORS, COLLECTIONS } from './constants';
 export const authService = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
     try {
+      // First authenticate with Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
-      const doctorsRef = collection(db, COLLECTIONS.DOCTORS);
-      const patientsRef = collection(db, COLLECTIONS.PATIENTS);
-      
-      const [doctorDocs, patientDocs] = await Promise.all([
-        getDocs(query(doctorsRef, where('email', '==', email))),
-        getDocs(query(patientsRef, where('email', '==', email)))
+      // Then query Firestore for user data in both collections
+      const [patientsSnapshot, doctorsSnapshot] = await Promise.all([
+        getDocs(query(collection(db, COLLECTIONS.PATIENTS), where('email', '==', email))),
+        getDocs(query(collection(db, COLLECTIONS.DOCTORS), where('email', '==', email)))
       ]);
       
-      if (!doctorDocs.empty) {
-        const doctorData = doctorDocs.docs[0].data() as Doctor;
-        const user: Doctor = {
-          ...doctorData,
-          id: doctorDocs.docs[0].id,
-          email: userCredential.user.email!,
-          photoURL: userCredential.user.photoURL || undefined,
-          type: "DOCTOR"
-        };
-        return { user, message: 'Login successful', role: "DOCTOR" };
+      try {
+        // Check doctors collection first
+        if (!doctorsSnapshot.empty) {
+          const doctorData = doctorsSnapshot.docs[0].data() as Doctor;
+          const user: Doctor = {
+            ...doctorData,
+            id: doctorsSnapshot.docs[0].id,
+            email: userCredential.user.email!,
+            photoURL: userCredential.user.photoURL || undefined,
+            type: "DOCTOR"
+          };
+          return { user, message: 'Login successful', role: "DOCTOR" };
+        }
+        
+        // Then check patients collection
+        if (!patientsSnapshot.empty) {
+          const patientData = patientsSnapshot.docs[0].data() as Patient;
+          const user: Patient = {
+            ...patientData,
+            id: patientsSnapshot.docs[0].id,
+            email: userCredential.user.email!,
+            photoURL: userCredential.user.photoURL || undefined,
+            type: "PATIENT"
+          };
+          return { user, message: 'Login successful', role: "PATIENT" };
+        }
+
+        // If no user document found in either collection, sign out and throw error
+        await firebaseSignOut(auth);
+        throw new Error('User account not found');
+        
+      } catch (firestoreError) {
+        // If Firestore query fails, sign out and throw error
+        await firebaseSignOut(auth);
+        console.error('Firestore query error:', firestoreError);
+        throw new Error('Failed to retrieve user data');
       }
-      
-      if (!patientDocs.empty) {
-        const patientData = patientDocs.docs[0].data() as Patient;
-        const user: Patient = {
-          ...patientData,
-          id: patientDocs.docs[0].id,
-          email: userCredential.user.email!,
-          photoURL: userCredential.user.photoURL || undefined,
-          type: "PATIENT"
-        };
-        return { user, message: 'Login successful', role: "PATIENT" };
-      }
-      
-      throw new AppError(AUTH_ERRORS.ROLE_NOT_FOUND, 'AUTH_ROLE_NOT_FOUND', 404);
     } catch (error) {
+      console.error('Login error:', error);
       throw new AppError(
         error instanceof Error ? error.message : AUTH_ERRORS.INVALID_CREDENTIALS,
         'AUTH_LOGIN_FAILED',

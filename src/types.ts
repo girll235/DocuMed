@@ -66,12 +66,14 @@ export interface BaseDocument {
     clinicId: string;
     appointmentDate: Date;
     duration: number;
-    status: keyof typeof APPOINTMENT_STATUS;
     type: 'first-visit' | 'follow-up' | 'consultation';
     symptoms?: string;
     notes?: string;
     cancelledBy?: string;
     cancelReason?: string;
+    status: AppointmentStatus;
+    lastModified?: Date;
+    modifiedBy?: string;
     patient?: {
       displayName: string;
       photoURL?: string;
@@ -89,7 +91,8 @@ export interface BaseDocument {
       address: string;
     };
   }
-  
+  export type AppointmentStatus = typeof APPOINTMENT_STATUS[keyof typeof APPOINTMENT_STATUS];
+
   export interface MedicalRecord extends BaseDocument {
     patientId: string;
     doctorId: string;
@@ -185,8 +188,8 @@ export interface BaseDocument {
   
   // Next.js related interfaces
   export interface PageProps {
-    params?: { [key: string]: string };
-    searchParams?: { [key: string]: string | string[] | undefined };
+    params: { [key: string]: string | string[] }
+    searchParams: { [key: string]: string | string[] | undefined }
   }
   // Add these interfaces to your types.ts file
 
