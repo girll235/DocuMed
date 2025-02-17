@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { initializeDatabase } from "@/scripts/initializeDatabase"
 import { Formik, Form, FieldArray } from "formik"
 import Image from "next/image"
 import Link from "next/link"
@@ -27,6 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { initializeUserRole } from '@/lib/auth';
+
 
 const DocSignUp = () => {
   const [isLoading, setIsLoading] = useState(false)
@@ -36,85 +37,89 @@ const DocSignUp = () => {
   const router = useRouter()
 
   const handleSubmit = async (values: DoctorSignUpFormData) => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password)
-      const user = userCredential.user
+      // 1. Create auth user first
+      const userCredential = await createUserWithEmailAndPassword(
+        auth, 
+        values.email.trim(),
+        values.password
+      );
+      const user = userCredential.user;
+  
+      // 2. Create base user document
+      await initializeUserRole(user.uid, values.email.trim(), USER_ROLES.DOCTOR);
 
+  
+      // 3. Remove sensitive data and prepare doctor data
+      const { password, confirmPassword, ...doctorData } = values;
+      const doctorProfile = {
+        ...doctorData,
+        id: user.uid,
+        type: USER_ROLES.DOCTOR,
+        active: true,
+        verified: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        displayName: `${values.displayName} ${values.surname}`
+      };
+  
+      // 4. Create doctor profile
+      await setDoc(doc(db, COLLECTIONS.DOCTORS, user.uid), doctorProfile);
+  
+      // 5. Update auth profile
       await updateProfile(user, {
         displayName: `${values.displayName} ${values.surname}`
-      })
-
-      await setDoc(doc(db, COLLECTIONS.USERS, user.uid), {
-        ...values,
-        password: undefined,
-        confirmPassword: undefined,
-        role: USER_ROLES.DOCTOR,
-        uid: user.uid,
-        createdAt: new Date().toISOString()
-      })
-
-      toast.success("Registration successful!")
-      router.push(ROUTES.LOGIN)
+      });
+  
+      toast.success("Registration successful!");
+      router.push(ROUTES.LOGIN);
     } catch (error) {
-      console.error("Registration error:", error)
-      toast.error("Failed to create account. Please try again.")
+      console.error("Registration error:", error);
+      let errorMessage = "Failed to create account. Please try again.";
+      
+      if (error instanceof Error) {
+        switch (error.message) {
+          case 'auth/email-already-in-use':
+            errorMessage = "This email is already registered.";
+            break;
+          case 'auth/invalid-email':
+            errorMessage = "Please enter a valid email address.";
+            break;
+          case 'permission-denied':
+            errorMessage = "Registration failed due to permission issues. Please contact support.";
+            break;
+          default:
+            errorMessage = "Registration failed. Please try again.";
+        }
+      }
+      
+      toast.error(errorMessage);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
+
+  const fetchData = async () => {
+    try {
+      const [specialtiesSnapshot, clinicsSnapshot] = await Promise.all([
+        getDocs(collection(db, COLLECTIONS.SPECIALTIES)),
+        getDocs(collection(db, COLLECTIONS.CLINICS))
+      ]);
+
+      setSpecialties(specialtiesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Specialty)));
+      setClinics(clinicsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Clinic)));
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast.error("Failed to load form data");
+    } finally {
+      setDataLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      setDataLoading(true)
-      try {
-        // Check if collections exist first
-        const [specialtiesSnap, clinicsSnap] = await Promise.all([
-          getDocs(collection(db, COLLECTIONS.SPECIALTIES)),
-          getDocs(collection(db, COLLECTIONS.CLINICS))
-        ])
-
-        if (specialtiesSnap.empty || clinicsSnap.empty) {
-          console.error("Required collections are empty")
-          // Initialize database if collections are empty
-          await initializeDatabase()
-          
-          // Fetch data again after initialization
-          const [newSpecialtiesSnap, newClinicsSnap] = await Promise.all([
-            getDocs(collection(db, COLLECTIONS.SPECIALTIES)),
-            getDocs(collection(db, COLLECTIONS.CLINICS))
-          ])
-
-          setSpecialties(newSpecialtiesSnap.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          })) as Specialty[])
-
-          setClinics(newClinicsSnap.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          })) as Clinic[])
-        } else {
-          setSpecialties(specialtiesSnap.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          })) as Specialty[])
-
-          setClinics(clinicsSnap.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          })) as Clinic[])
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error)
-        toast.error("Failed to load required data. Please try again.")
-      } finally {
-        setDataLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [])
+    fetchData();
+  }, []);
 
   // Show loading state while fetching data
   if (dataLoading) {

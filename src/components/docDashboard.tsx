@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { CalendarDays, Clock, User2, Filter } from "lucide-react"
+import { CalendarDays, Clock, User2 } from "lucide-react"
 import { CiSearch } from "react-icons/ci"
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -19,6 +19,27 @@ import { toast } from "react-hot-toast"
 import { format } from "date-fns"
 import { confirm } from "@/lib/utils"
 import { getStatusStyle } from "@/lib/utils"
+
+const filterAppointments = (appointments: Appointment[]) => {
+  const now = new Date();
+  return {
+    active: appointments.filter(app => 
+      app.status === 'PENDING' &&
+      new Date(app.appointmentDate) >= now
+    ),
+    upcoming: appointments.filter(app => 
+      (app.status === 'APPROVED' || app.status === 'RESCHEDULED') &&
+      new Date(app.appointmentDate) >= now
+    ),
+    ongoing: appointments.filter(app => 
+      app.status === 'ONGOING'
+    ),
+    past: appointments.filter(app => 
+      (app.status === 'COMPLETED' || app.status === 'REJECTED' || app.status === 'CANCELLED') ||
+      new Date(app.appointmentDate) < now
+    )
+  };
+};
 
 
 const DocDashboard = () => {
@@ -129,40 +150,60 @@ const DocDashboard = () => {
     appointmentDate: Date
   ) => {
     try {
-      let status = action === "reject" ? "REJECTED" : 
-                   action === "delay" ? "RESCHEDULED" : "APPROVED";
-  
-      // If accepting and the appointment time is current or within the next hour
-      if (action === "accept") {
-        const now = new Date();
-        const appointmentTime = new Date(appointmentDate);
-        const timeDiff = (appointmentTime.getTime() - now.getTime()) / (1000 * 60); // difference in minutes
-  
-        if (timeDiff <= 60 && timeDiff >= -30) { // If within 1 hour before or 30 minutes after
-          status = "ONGOING";
-        }
+      let status: AppointmentStatus;
+      const now = new Date();
+      
+      switch (action) {
+        case "accept":
+          const appointmentTime = new Date(appointmentDate);
+          const timeDiff = (appointmentTime.getTime() - now.getTime()) / (1000 * 60);
+          status = timeDiff <= 60 && timeDiff >= -30 ? "ONGOING" : "APPROVED";
+          break;
+        case "reject":
+          status = "REJECTED";
+          break;
+        case "delay":
+          status = "RESCHEDULED";
+          break;
+        default:
+          throw new Error("Invalid action");
       }
   
       const appointmentRef = doc(db, COLLECTIONS.APPOINTMENTS, appointmentId);
-      await updateDoc(appointmentRef, {
-        status,
-        lastModified: new Date(),
-        modifiedBy: userData?.id
-      });
-  
-      // Update the appointments list in state
+    await updateDoc(appointmentRef, {
+      status,
+      lastModified: now,
+      modifiedBy: userData?.id
+    });
+
+    // Update local state based on the new status
+    if (["REJECTED", "COMPLETED", "CANCELLED"].includes(status)) {
+      setAppointments(prev => prev.filter(app => app.id !== appointmentId));
+    } else {
       setAppointments(prev => prev.map(app => 
-        app.id === appointmentId ? { ...app, status: status as AppointmentStatus } : app
+        app.id === appointmentId 
+          ? { ...app, status, lastModified: now }
+          : app
       ));
-  
-      toast.success(`Appointment ${
-        status === "ONGOING" ? "started" : action + "ed"
-      } successfully`);
-    } catch (error) {
-      console.error(`Error ${action}ing appointment:`, error);
-      toast.error(`Failed to ${action} appointment`);
     }
-  };
+
+    const actionMessages: Record<AppointmentStatus, string> = {
+      ONGOING: "started",
+      APPROVED: "accepted",
+      REJECTED: "rejected",
+      RESCHEDULED: "rescheduled",
+      PENDING: "pending",
+      CANCELLED: "cancelled",
+      COMPLETED: "completed"
+    };
+    toast.success(`Appointment ${actionMessages[status]} successfully`);
+  } catch (error) {
+    console.error(`Error handling appointment action:`, error);
+    toast.error(`Failed to process appointment action`);
+  }
+};
+// Update the stats section in your JSX
+
   const handleLogout = async () => {
     try {
       await signOut(auth)
@@ -201,14 +242,7 @@ const DocDashboard = () => {
 
 
 
-  const filteredAppointments = appointments.filter((appointment) => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      appointment.patient?.displayName.toLowerCase().includes(searchLower) ||
-      appointment.type.toLowerCase().includes(searchLower) ||
-      appointment.doctor?.specialty.toLowerCase().includes(searchLower)
-    );
-  });
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
@@ -284,57 +318,90 @@ const DocDashboard = () => {
             </div>
 
             <div className="space-y-6">
-              {/* Stats Section */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                {[
-                  { title: "Today's Appointments", value: filteredAppointments.length, icon: CalendarDays },
-                  { title: "Pending Reviews", value: filteredAppointments.filter(a => a.status === "PENDING").length, icon: Clock },
-                  { title: "Total Patients", value: "150+", icon: User2 },
-                  { title: "Working Hours", value: "9AM - 5PM", icon: Clock }
-                ].map((stat, index) => (
-                  <motion.div
-                    key={stat.title}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-500">{stat.title}</p>
-                        <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                      </div>
-                      <div className="bg-blue-100 p-3 rounded-lg">
-                        <stat.icon className="w-6 h-6 text-blue-600" />
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+
+{/* Stats Section */}
+<div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+  {(() => {
+    const filtered = filterAppointments(appointments);
+    return [
+      { 
+        title: "Pending Appointments", 
+        value: filtered.active.length, 
+        icon: CalendarDays 
+      },
+      { 
+        title: "Upcoming Approved", 
+        value: filtered.upcoming.length, 
+        icon: Clock 
+      },
+      { 
+        title: "Ongoing Sessions", 
+        value: filtered.ongoing.length, 
+        icon: User2 
+      },
+      { 
+        title: "Past Appointments", 
+        value: filtered.past.length, 
+        icon: Clock 
+      }
+    ].map((stat, index) => (
+      <motion.div
+        key={stat.title}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.1 }}
+        className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-500">{stat.title}</p>
+            <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+          </div>
+          <div className="bg-blue-100 p-3 rounded-lg">
+            <stat.icon className="w-6 h-6 text-blue-600" />
+          </div>
+        </div>
+      </motion.div>
+    ));
+  })()}
+</div>
 
               {/* Appointments Table */}
               <Card className="overflow-hidden">
-                <CardHeader className="bg-gray-50 py-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-gray-900">Upcoming Appointments</h3>
-                    <Button variant="outline" className="flex items-center">
-                      <Filter className="w-4 h-4 mr-2" />
-                      Filter
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      {/* ... existing table header ... */}
-                      <tbody className="divide-y divide-gray-200">
-                        {filteredAppointments.map((appointment) => (
-                          <motion.tr
-                            key={appointment.id}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="hover:bg-gray-50 transition-colors"
-                          >
+  <CardHeader className="bg-gray-50 py-4">
+    <div className="flex items-center justify-between">
+      <h3 className="text-lg font-semibold text-gray-900">Pending Appointments</h3>
+      <Link href={ROUTES.APPOINTMENTS}>
+        <Button variant="outline" className="flex items-center">
+          View All Appointments
+        </Button>
+      </Link>
+    </div>
+              </CardHeader>
+  <CardContent className="p-0">
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Patient
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Date & Time
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200 bg-white">
+        {filterAppointments(appointments).active.map((appointment) => (
+          <motion.tr
+            key={appointment.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="hover:bg-gray-50 transition-colors"
+          >
                             <td className="px-6 py-4">
                               <div className="flex items-center">
                                 <Image
@@ -365,27 +432,39 @@ const DocDashboard = () => {
                             <td className="px-6 py-4">
   {appointment.status === 'PENDING' ? (
     <div className="flex space-x-2">
- <Button
-  onClick={() => handleAction(
-    appointment.id, 
-    "accept", 
-    appointment.appointmentDate
-  )}
-  variant="outline"
-  className="bg-green-50 text-green-700 hover:bg-green-100"
->
-  Accept
-</Button>
-
-{/* Update the Edit Decision button */}
-<Button
-  onClick={() => handleEditDecision(appointment.id, appointment.status)}
-  variant="ghost"
-  className="text-blue-600 hover:text-blue-800"
-  size="sm"
->
-  Edit Decision
-</Button>
+      <Button
+        onClick={() => handleAction(
+          appointment.id, 
+          "accept", 
+          appointment.appointmentDate
+        )}
+        variant="outline"
+        className="bg-green-50 text-green-700 hover:bg-green-100"
+      >
+        Accept
+      </Button>
+      <Button
+        onClick={() => handleAction(
+          appointment.id, 
+          "reject", 
+          appointment.appointmentDate
+        )}
+        variant="outline"
+        className="bg-red-50 text-red-700 hover:bg-red-100"
+      >
+        Reject
+      </Button>
+      <Button
+        onClick={() => handleAction(
+          appointment.id, 
+          "delay", 
+          appointment.appointmentDate
+        )}
+        variant="outline"
+        className="bg-yellow-50 text-yellow-700 hover:bg-yellow-100"
+      >
+        Delay
+      </Button>
     </div>
   ) : (
     <div className="flex items-center space-x-2">
@@ -396,27 +475,34 @@ const DocDashboard = () => {
         }
         {appointment.status}
       </span>
-          <Button
-            onClick={() => handleEditDecision(appointment.id, appointment.status)}
-            variant="ghost"
-            className="text-blue-600 hover:text-blue-800"
-            size="sm"
-          >
-            Edit Decision
-          </Button>
-          <Link
-            href={`${ROUTES.PATIENT_RECORD}/${appointment.patientId}`}
-            className="text-blue-600 hover:text-blue-800 text-sm underline"
-          >
-            View Profile
-          </Link>
-        </div>
-      )}
-    </td>
+      <Button
+        onClick={() => handleEditDecision(appointment.id, appointment.status)}
+        variant="ghost"
+        className="text-blue-600 hover:text-blue-800"
+        size="sm"
+      >
+        Edit Decision
+      </Button>
+      <Link
+        href={`${ROUTES.PATIENT_RECORD}/${appointment.patientId}`}
+        className="text-blue-600 hover:text-blue-800 text-sm underline"
+      >
+        View Profile
+      </Link>
+    </div>
+  )}
+</td>
                           </motion.tr>
                         ))}
                       </tbody>
-                    </table>
+                    
+                   
+                      </table>
+    {filterAppointments(appointments).active.length === 0 && (
+      <div className="text-center py-8">
+        <p className="text-gray-500">No pending appointments</p>
+      </div>
+    )}
                   </div>
                 </CardContent>
               </Card>

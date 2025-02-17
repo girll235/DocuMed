@@ -6,10 +6,27 @@ import {
   sendPasswordResetEmail,
   
 } from 'firebase/auth';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import {  Doctor, Patient, AuthResponse } from '@/types';
 import { AppError } from './errors';
-import {  AUTH_ERRORS, COLLECTIONS } from './constants';
+import {  AUTH_ERRORS, COLLECTIONS, USER_ROLES } from './constants';
+
+export const initializeUserRole = async (uid: string, email: string, role: string) => {
+  try {
+    await setDoc(doc(db, 'users', uid), {
+      email,
+      role,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    
+    // Log successful initialization
+    console.log(`User role initialized: ${role}`);
+  } catch (error) {
+    console.error('Error initializing user role:', error);
+    throw new Error('Failed to initialize user role');
+  }
+};
 
 export const authService = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
@@ -17,49 +34,56 @@ export const authService = {
       // First authenticate with Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
-      // Then query Firestore for user data in both collections
-      const [patientsSnapshot, doctorsSnapshot] = await Promise.all([
-        getDocs(query(collection(db, COLLECTIONS.PATIENTS), where('email', '==', email))),
-        getDocs(query(collection(db, COLLECTIONS.DOCTORS), where('email', '==', email)))
-      ]);
-      
-      try {
-        // Check doctors collection first
-        if (!doctorsSnapshot.empty) {
-          const doctorData = doctorsSnapshot.docs[0].data() as Doctor;
-          const user: Doctor = {
-            ...doctorData,
-            id: doctorsSnapshot.docs[0].id,
-            email: userCredential.user.email!,
-            photoURL: userCredential.user.photoURL || undefined,
-            type: "DOCTOR"
-          };
-          return { user, message: 'Login successful', role: "DOCTOR" };
-        }
-        
-        // Then check patients collection
-        if (!patientsSnapshot.empty) {
-          const patientData = patientsSnapshot.docs[0].data() as Patient;
-          const user: Patient = {
-            ...patientData,
-            id: patientsSnapshot.docs[0].id,
-            email: userCredential.user.email!,
-            photoURL: userCredential.user.photoURL || undefined,
-            type: "PATIENT"
-          };
-          return { user, message: 'Login successful', role: "PATIENT" };
+      // Get user role from users collection first
+      const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, userCredential.user.uid));
+      if (!userDoc.exists()) {
+        await firebaseSignOut(auth);
+        throw new Error('User role not found');
+      }
+
+      const userRole = userDoc.data().role;
+
+      // Then get full user data based on role
+      if (userRole === USER_ROLES.DOCTOR) {
+        const doctorDoc = await getDoc(doc(db, COLLECTIONS.DOCTORS, userCredential.user.uid));
+        if (!doctorDoc.exists()) {
+          await firebaseSignOut(auth);
+          throw new Error('Doctor profile not found');
         }
 
-        // If no user document found in either collection, sign out and throw error
-        await firebaseSignOut(auth);
-        throw new Error('User account not found');
-        
-      } catch (firestoreError) {
-        // If Firestore query fails, sign out and throw error
-        await firebaseSignOut(auth);
-        console.error('Firestore query error:', firestoreError);
-        throw new Error('Failed to retrieve user data');
+        const doctorData = doctorDoc.data() as Doctor;
+        const user: Doctor = {
+          ...doctorData,
+          id: doctorDoc.id,
+          email: userCredential.user.email!,
+          photoURL: userCredential.user.photoURL || undefined,
+          type: "DOCTOR"
+        };
+        return { user, message: 'Login successful', role: "DOCTOR" };
       }
+      
+      if (userRole === USER_ROLES.PATIENT) {
+        const patientDoc = await getDoc(doc(db, COLLECTIONS.PATIENTS, userCredential.user.uid));
+        if (!patientDoc.exists()) {
+          await firebaseSignOut(auth);
+          throw new Error('Patient profile not found');
+        }
+
+        const patientData = patientDoc.data() as Patient;
+        const user: Patient = {
+          ...patientData,
+          id: patientDoc.id,
+          email: userCredential.user.email!,
+          photoURL: userCredential.user.photoURL || undefined,
+          type: "PATIENT"
+        };
+        return { user, message: 'Login successful', role: "PATIENT" };
+      }
+
+      // If we get here, something went wrong
+      await firebaseSignOut(auth);
+      throw new Error('Invalid user role');
+      
     } catch (error) {
       console.error('Login error:', error);
       throw new AppError(
@@ -68,38 +92,45 @@ export const authService = {
         401
       );
     }
-  },
+},
 
-  getCurrentUser: async (): Promise<Doctor | Patient | null> => {
+getCurrentUser: async (): Promise<Doctor | Patient | null> => {
     const user = auth.currentUser;
     if (!user) return null;
   
     try {
-      const [doctorDoc, patientDoc] = await Promise.all([
-        getDoc(doc(db, COLLECTIONS.DOCTORS, user.uid)),
-        getDoc(doc(db, COLLECTIONS.PATIENTS, user.uid))
-      ]);
-  
-      if (doctorDoc.exists()) {
-        const data = doctorDoc.data() as Doctor;
-        return {
-          ...data,
-          id: doctorDoc.id,
-          email: user.email!,
-          photoURL: user.photoURL || undefined,
-          type: "DOCTOR"
-        };
-      }
-  
-      if (patientDoc.exists()) {
-        const data = patientDoc.data() as Patient;
-        return {
-          ...data,
-          id: patientDoc.id,
-          email: user.email!,
-          photoURL: user.photoURL || undefined,
-          type: "PATIENT"
-        };
+      // First check users collection for role
+      const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, user.uid));
+      if (!userDoc.exists()) return null;
+      
+      const userData = userDoc.data();
+      const role = userData.role;
+
+      // Then get full user data from appropriate collection
+      if (role === USER_ROLES.DOCTOR) {
+        const doctorDoc = await getDoc(doc(db, COLLECTIONS.DOCTORS, user.uid));
+        if (doctorDoc.exists()) {
+          const data = doctorDoc.data() as Doctor;
+          return {
+            ...data,
+            id: doctorDoc.id,
+            email: user.email!,
+            photoURL: user.photoURL || undefined,
+            type: "DOCTOR"
+          };
+        }
+      } else if (role === USER_ROLES.PATIENT) {
+        const patientDoc = await getDoc(doc(db, COLLECTIONS.PATIENTS, user.uid));
+        if (patientDoc.exists()) {
+          const data = patientDoc.data() as Patient;
+          return {
+            ...data,
+            id: patientDoc.id,
+            email: user.email!,
+            photoURL: user.photoURL || undefined,
+            type: "PATIENT"
+          };
+        }
       }
   
       return null;
@@ -108,7 +139,6 @@ export const authService = {
       return null;
     }
   },
-
   logout: async (): Promise<void> => {
     try {
       await firebaseSignOut(auth);

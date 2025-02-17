@@ -19,6 +19,16 @@ import { doctorSchema, DoctorParamsFormData } from "@/lib/validation/doctorSchem
 import { Loader2, Plus, X } from "lucide-react"
 import { Doctor, Specialty, Clinic } from "@/types"
 
+const defaultWorkingHours = {
+  monday: { start: "09:00", end: "17:00" },
+  tuesday: { start: "09:00", end: "17:00" },
+  wednesday: { start: "09:00", end: "17:00" },
+  thursday: { start: "09:00", end: "17:00" },
+  friday: { start: "09:00", end: "17:00" },
+  saturday: { start: "", end: "" },
+  sunday: { start: "", end: "" }
+};
+
 const initialValues: DoctorParamsFormData = {
   displayName: "",
   surname: "",
@@ -26,19 +36,16 @@ const initialValues: DoctorParamsFormData = {
   phoneNumber: "",
   specialtyId: "",
   clinicId: "",
+  licenseNumber: "",
   bio: "",
+  experience: 0,
   languages: ["English"],
   consultationFee: 0,
-  workingHours: {
-    monday: { start: "09:00", end: "17:00" },
-    tuesday: { start: "09:00", end: "17:00" },
-    wednesday: { start: "09:00", end: "17:00" },
-    thursday: { start: "09:00", end: "17:00" },
-    friday: { start: "09:00", end: "17:00" }
-  },
+  education: [{ degree: '', institution: '', year: new Date().getFullYear() }],
+  workingHours: defaultWorkingHours,
   password: "",
   confirmPassword: ""
-}
+};
 
 const DoctorParams = () => {
   const { userData } = useUser()
@@ -49,53 +56,46 @@ const DoctorParams = () => {
 
     useEffect(() => {
       const fetchData = async () => {
-        if (!userData?.id) return
-  
+        if (!userData?.id) return;
+    
         try {
           const [doctorDoc, specialtiesSnap, clinicsSnap] = await Promise.all([
             getDoc(doc(db, COLLECTIONS.DOCTORS, userData.id)),
             getDocs(collection(db, COLLECTIONS.SPECIALTIES)),
             getDocs(collection(db, COLLECTIONS.CLINICS))
-          ])
-  
+          ]);
+    
           if (doctorDoc.exists()) {
-            const data = doctorDoc.data() as Doctor
+            const data = doctorDoc.data() as Doctor;
             setFormValues({
-              displayName: data.displayName,
-              surname: data.surname,
-              email: data.email,
-              phoneNumber: data.phoneNumber,
-              specialtyId: data.specialtyId,
-              clinicId: data.clinicId,
-              bio: data.bio,
-              languages: data.languages,
-              consultationFee: data.consultationFee,
-              workingHours: data.workingHours,
+              ...initialValues,
+              ...data,
+              workingHours: data.workingHours || defaultWorkingHours,
               password: "",
               confirmPassword: ""
-            })
+            });
           }
-  
+    
           setSpecialties(specialtiesSnap.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
-          })) as Specialty[])
-  
+          })) as Specialty[]);
+    
           setClinics(clinicsSnap.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
-          })) as Clinic[])
-  
+          })) as Clinic[]);
+    
         } catch (error) {
-          console.error("Error fetching data:", error)
-          toast.error("Failed to load doctor data")
+          console.error("Error fetching data:", error);
+          toast.error("Failed to load doctor data");
         } finally {
-          setLoading(false)
+          setLoading(false);
         }
-      }
-  
-      fetchData()
-    }, [userData?.id])
+      };
+    
+      fetchData();
+    }, [userData?.id]);
     const handleSubmit = async (values: DoctorParamsFormData, { setSubmitting }: { setSubmitting: (isSubmitting: boolean) => void }) => {
       if (!userData?.id) {
         toast.error("No user ID found")
@@ -379,53 +379,186 @@ const DoctorParams = () => {
     <p className="text-red-500 text-sm mt-1">{errors.consultationFee}</p>
   )}
 </div>
-
- {/* Working Hours */}
- <div className="doctor-form-section">
-                    <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
-                      Working Hours
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {Object.entries(values.workingHours).map(([day]) => (
-                        <div
-                          key={day}
-                          className="p-4 bg-gray-50 rounded-lg hover:shadow-md transition-all duration-200"
-                        >
-      <div>
-        <Label htmlFor={`workingHours.${day}.start`} className="capitalize">{day} Start</Label>
-        <Field
-          as={Input}
-          type="time"
-          id={`workingHours.${day}.start`}
-          name={`workingHours.${day}.start`}
-          className={
-            errors.workingHours?.[day]?.start && 
-            touched.workingHours?.[day]?.start 
-              ? "border-red-500" 
-              : ""
-          }
-        />
-      </div>
-      <div>
-        <Label htmlFor={`workingHours.${day}.end`} className="capitalize">{day} End</Label>
-        <Field
-          as={Input}
-          type="time"
-          id={`workingHours.${day}.end`}
-          name={`workingHours.${day}.end`}
-          className={
-            errors.workingHours?.[day]?.end && 
-            touched.workingHours?.[day]?.end 
-              ? "border-red-500" 
-              : ""
-          }
-        />
-      </div>
+{/* Education Section */}
+<div className="doctor-form-section">
+  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+    Education & Experience
+  </h3>
+  <div className="space-y-6">
+    <div>
+      <Label htmlFor="experience">Years of Experience</Label>
+      <Field
+        as={Input}
+        id="experience"
+        name="experience"
+        type="number"
+        min="0"
+        className={errors.experience && touched.experience ? "border-red-500" : ""}
+      />
+      {errors.experience && touched.experience && (
+        <p className="text-red-500 text-sm mt-1">{errors.experience}</p>
+      )}
     </div>
-  ))}
-</div>
-</div>
 
+    <FieldArray name="education">
+      {({ push, remove }) => (
+        <div className="space-y-4">
+          {values.education.map((_, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="p-4 border rounded-lg bg-gray-50 hover:shadow-md transition-all duration-200"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor={`education.${index}.degree`}>Degree</Label>
+                  <Field
+                    as={Input}
+                    name={`education.${index}.degree`}
+                    placeholder="e.g., MD, MBBS"
+                    className={
+                      typeof errors.education?.[index] === 'object' && 'degree' in errors.education[index] && 
+                      touched.education?.[index]?.degree ? "border-red-500" : ""
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`education.${index}.institution`}>Institution</Label>
+                  <Field
+                    as={Input}
+                    name={`education.${index}.institution`}
+                    placeholder="University name"
+                    className={
+                      typeof errors.education?.[index] === 'object' && 'institution' in errors.education[index] && 
+                      touched.education?.[index]?.institution ? "border-red-500" : ""
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`education.${index}.year`}>Year</Label>
+                  <Field
+                    as={Input}
+                    type="number"
+                    name={`education.${index}.year`}
+                    min="1950"
+                    max={new Date().getFullYear()}
+                    className={
+                      typeof errors.education?.[index] === 'object' && 'year' in errors.education[index] && 
+                      touched.education?.[index]?.year ? "border-red-500" : ""
+                    }
+                  />
+                </div>
+              </div>
+              {index > 0 && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => remove(index)}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Remove
+                </Button>
+              )}
+            </motion.div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => push({ 
+              degree: '', 
+              institution: '', 
+              year: new Date().getFullYear() 
+            })}
+            className="w-full border-dashed"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Education
+          </Button>
+        </div>
+      )}
+    </FieldArray>
+  </div>
+</div>
+ {/* Working Hours */}
+<div className="doctor-form-section">
+  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+    Working Hours
+  </h3>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {Object.entries(values.workingHours || defaultWorkingHours).map(([day, hours]) => (
+      <div
+        key={day}
+        className="p-4 bg-gray-50 rounded-lg hover:shadow-md transition-all duration-200"
+      >
+        <div className="flex flex-col space-y-4">
+          <h4 className="font-medium capitalize">{day}</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor={`workingHours.${day}.start`}>Start Time</Label>
+              <Field
+                as={Input}
+                type="time"
+                id={`workingHours.${day}.start`}
+                name={`workingHours.${day}.start`}
+                value={hours.start}
+                className={
+                  errors.workingHours?.[day]?.start && 
+                  touched.workingHours?.[day]?.start 
+                    ? "border-red-500" 
+                    : ""
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor={`workingHours.${day}.end`}>End Time</Label>
+              <Field
+                as={Input}
+                type="time"
+                id={`workingHours.${day}.end`}
+                name={`workingHours.${day}.end`}
+                value={hours.end}
+                className={
+                  errors.workingHours?.[day]?.end && 
+                  touched.workingHours?.[day]?.end 
+                    ? "border-red-500" 
+                    : ""
+                }
+              />
+            </div>
+            {/* Optional break time */}
+            {hours.break && (
+              <div className="col-span-2 grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor={`workingHours.${day}.break.start`}>Break Start</Label>
+                  <Field
+                    as={Input}
+                    type="time"
+                    id={`workingHours.${day}.break.start`}
+                    name={`workingHours.${day}.break.start`}
+                    value={hours.break.start}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`workingHours.${day}.break.end`}>Break End</Label>
+                  <Field
+                    as={Input}
+                    type="time"
+                    id={`workingHours.${day}.break.end`}
+                    name={`workingHours.${day}.break.end`}
+                    value={hours.break.end}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
                 {/* Password Section */}
                 <div className="doctor-form-section">
                     <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">

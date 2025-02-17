@@ -25,6 +25,8 @@ import type { ClientSignUpFormData } from "@/types"
 import { toast } from "react-hot-toast"
 import { Loader2, ArrowLeft } from "lucide-react"
 import { motion } from "framer-motion"
+import { initializeUserRole } from '@/lib/auth';
+
 
 
 const CITIES = [
@@ -76,19 +78,21 @@ export default function ClientSignUp() {
     values: ClientSignUpFormData,
     { setSubmitting, setStatus }: FormikHelpers<ClientSignUpFormData>
   ) => {
-    console.log("Form submitted with values:", values); // Debug log
-    setIsLoading(true)
-    setSubmitting(true)
-
+    setIsLoading(true);
+    setSubmitting(true);
+  
     try {
-      console.log("Creating user account..."); // Debug log
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         values.email,
         values.password
-      )
+      );
+  
+      const user = userCredential.user;
+  
 
       console.log("User account created:", userCredential.user.uid); // Debug log
+      await initializeUserRole(user.uid, values.email, USER_ROLES.PATIENT);
 
       // Update user profile
       await updateProfile(userCredential.user, {
@@ -96,7 +100,7 @@ export default function ClientSignUp() {
       })
 
       // Create user document in Firestore
-      await setDoc(doc(db, COLLECTIONS.PATIENTS, userCredential.user.uid), {
+      await setDoc(doc(db, COLLECTIONS.PATIENTS, user.uid), {
         displayName: values.displayName,
         email: values.email,
         phoneNumber: values.phoneNumber,

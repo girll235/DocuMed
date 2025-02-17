@@ -172,7 +172,10 @@ export interface BaseDocument {
     password?: string;
     confirmPassword?: string;
   }
-  
+  export interface DoctorSignUpFormData extends Omit<Doctor, keyof BaseDocument | 'type' | 'active'> {
+    password: string;
+    confirmPassword: string;
+  }
   // Auth related interfaces
   export interface AuthResponse {
     user: Doctor | Patient;

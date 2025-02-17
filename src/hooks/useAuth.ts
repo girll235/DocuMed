@@ -25,6 +25,7 @@ export const useAuth = () => {
           }
         }
       } catch (err) {
+        console.error('Auth initialization error:', err);
         setError(err instanceof Error ? err.message : 'Authentication error');
       } finally {
         setLoading(false);
@@ -33,6 +34,25 @@ export const useAuth = () => {
 
     initializeAuth();
   }, [router]);
+
+  const handleLogin = async (email: string, password: string) => {
+    try {
+      const response = await authService.login(email, password);
+      setUser(response.user);
+      
+      // Explicit role-based redirection
+      if (response.role === "DOCTOR") {
+        router.push(ROUTES.DOC_DASHBOARD);
+      } else if (response.role === "PATIENT") {
+        router.push(ROUTES.CLIENT_DASHBOARD);
+      }
+      
+      return response;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login error');
+      throw err;
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -48,6 +68,7 @@ export const useAuth = () => {
     user, 
     loading, 
     error,
+    handleLogin,
     handleLogout
   };
 };

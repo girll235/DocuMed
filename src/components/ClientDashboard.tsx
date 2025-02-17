@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { Doctor, Specialty, Clinic } from "@/types"
+import { Doctor, Specialty, Clinic, Appointment } from "@/types"
 import { COLLECTIONS, ROUTES, USER_ROLES } from "@/lib/constants"
 import { useUser } from "@/contexts/UserContext"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where } from "firebase/firestore"
+import { collection, getDocs, query, where, getDoc, doc } from "firebase/firestore"
 import { authService } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { DoctorCard } from "./DoctorCard"
@@ -15,69 +15,147 @@ import { SearchBar } from "./SearchBar"
 import { toast } from "react-hot-toast"
 
 export const ClientDashboard = () => {
-    const [doctors, setDoctors] = useState<Doctor[]>([])
-    const [specialties, setSpecialties] = useState<Specialty[]>([])
-    const [selectedSpecialty, setSelectedSpecialty] = useState<string>("")
-    const [searchTerm, setSearchTerm] = useState("")
-    const [loading, setLoading] = useState(true)
-  
+  const [doctors, setDoctors] = useState<Doctor[]>([])
+  const [specialties, setSpecialties] = useState<Specialty[]>([])
+  const [selectedSpecialty, setSelectedSpecialty] = useState<string>("")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+
     const router = useRouter()
     const { userData, role } = useUser()
   
     useEffect(() => {
       if (role && role !== USER_ROLES.PATIENT) {
-        router.push(ROUTES.LOGIN)
-        return
+        router.push(ROUTES.LOGIN);
+        return;
       }
-  
+    
       const fetchData = async () => {
+        if (!userData?.id) return;
+    
         try {
-          const [doctorsSnap, specialtiesSnap] = await Promise.all([
+          setLoading(true);
+          
+          // 1. Fetch appointments and related doctors
+          const appointmentsSnap = await getDocs(
+            query(
+              collection(db, COLLECTIONS.APPOINTMENTS),
+              where("patientId", "==", userData.id),
+              where("status", "in", ["PENDING", "APPROVED"])
+            )
+          );
+    
+          // Get full appointment data with typing
+          const appointmentData = appointmentsSnap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            appointmentDate: doc.data().appointmentDate?.toDate(),
+            createdAt: doc.data().createdAt?.toDate(),
+            updatedAt: doc.data().updatedAt?.toDate(),
+            lastModified: doc.data().lastModified?.toDate()
+          })) as Array<Omit<Appointment, 'doctor' | 'clinic'>>;
+    
+          // 2. Create a Set of doctor IDs with appointments
+          const doctorsWithAppointments = new Set(
+            appointmentData.map(apt => apt.doctorId)
+          );
+    
+          // 3. Fetch all collections in parallel
+          const [doctorsSnap, specialtiesSnap, clinicsSnap] = await Promise.all([
             getDocs(query(
               collection(db, COLLECTIONS.DOCTORS),
               where("verified", "==", true),
               where("active", "==", true)
             )),
-            getDocs(collection(db, COLLECTIONS.SPECIALTIES))
+            getDocs(collection(db, COLLECTIONS.SPECIALTIES)),
+            getDocs(collection(db, COLLECTIONS.CLINICS))
           ]);
-  
+    
+          // 4. Create lookup maps for better performance
           const specialtiesList = specialtiesSnap.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
           })) as Specialty[];
-  
-          const doctorsList = await Promise.all(doctorsSnap.docs.map(async (docSnap) => {
-            const doctorData = docSnap.data() as Doctor;
-            const specialty = specialtiesList.find(s => s.id === doctorData.specialtyId);
-            const clinicSnap = await getDocs(
-              query(collection(db, COLLECTIONS.CLINICS), 
-              where("id", "==", doctorData.clinicId))
-            );
-            const clinic = clinicSnap.docs[0]?.data() as Clinic;
-  
+    
+          const clinicsMap = new Map(
+            clinicsSnap.docs.map(doc => [
+              doc.id, 
+              { id: doc.id, ...doc.data() } as Clinic
+            ])
+          );
+    
+          // 5. Process available doctors (filtering out those with appointments)
+          const availableDoctors = doctorsSnap.docs
+            .filter(doc => !doctorsWithAppointments.has(doc.id))
+            .map(doc => {
+              const doctorData = doc.data() as Doctor;
+              const specialty = specialtiesList.find(s => s.id === doctorData.specialtyId);
+              const clinic = clinicsMap.get(doctorData.clinicId);
+    
+              return {
+                ...doctorData,
+                id: doc.id,
+                specialty: specialty?.name || 'Unknown Specialty',
+                clinic: clinic ? {
+                  name: clinic.name,
+                  address: clinic.address
+                } : undefined
+              };
+            });
+    
+          // 6. Process doctors with appointments
+          const appointmentDoctors = await Promise.all(
+            Array.from(doctorsWithAppointments).map(async (id) => {
+              const docSnap = await getDoc(doc(db, COLLECTIONS.DOCTORS, id));
+              if (!docSnap.exists()) return null;
+              
+              const doctorData = docSnap.data() as Doctor;
+              const specialty = specialtiesList.find(s => s.id === doctorData.specialtyId);
+              
+              return {
+                ...doctorData,
+                id: docSnap.id,
+                specialty: specialty?.name,
+              };
+            })
+          );
+    
+          // 7. Combine appointments with doctor details
+          const appointmentsWithDoctors = appointmentData.map(apt => {
+            const doctor = appointmentDoctors.find(d => d?.id === apt.doctorId);
+            const clinic = clinicsMap.get(apt.clinicId);
+            
             return {
-              ...doctorData,
-              id: docSnap.id,
-              specialty: specialty?.name || 'Unknown Specialty',
+              ...apt,
+              doctor: doctor ? {
+                displayName: doctor.displayName,
+                surname: doctor.surname,
+                specialty: doctor.specialty || 'Unknown Specialty',
+                photoURL: doctor.photoURL
+              } : undefined,
               clinic: clinic ? {
                 name: clinic.name,
                 address: clinic.address
               } : undefined
             };
-          }));
-  
-          setDoctors(doctorsList);
+          }) as Appointment[];
+    
+          // 8. Update state
+          setDoctors(availableDoctors);
           setSpecialties(specialtiesList);
+          setAppointments(appointmentsWithDoctors);
+    
         } catch (error) {
           console.error("Error fetching data:", error);
-          toast.error("Failed to load doctors");
+          toast.error("Failed to load dashboard data");
         } finally {
           setLoading(false);
         }
       };
-  
+    
       fetchData();
-    }, [role, router]);
+    }, [role, router, userData?.id]);
 
   const handleLogout = async () => {
     try {
@@ -212,6 +290,67 @@ export const ClientDashboard = () => {
             ))}
           </div>
         )}
+
+
+{appointments.length > 0 && (
+  <section className="mt-12">
+    <div className="flex items-center justify-between mb-6">
+      <h2 className="text-3xl font-bold text-blue-900">
+        Your Appointments
+      </h2>
+      <Button
+        variant="outline"
+        onClick={() => router.push(ROUTES.APPOINTMENTS)}
+        className="text-blue-600 hover:text-blue-700"
+      >
+        View All Appointments
+      </Button>
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {appointments.slice(0, 3).map((appointment) => (
+        <motion.div
+          key={appointment.id}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+              appointment.status === 'APPROVED' 
+                ? 'bg-green-100 text-green-800'
+                : 'bg-yellow-100 text-yellow-800'
+            }`}>
+              {appointment.status}
+            </span>
+            <span className="text-gray-500 text-sm">
+              {appointment.appointmentDate.toLocaleDateString()}
+            </span>
+          </div>
+          <h3 className="text-lg font-semibold text-blue-900 mb-2">
+            {appointment.type} Appointment
+          </h3>
+          <div className="text-gray-600 space-y-2">
+            <p>Date: {appointment.appointmentDate.toLocaleDateString()}</p>
+            <p>Time: {appointment.appointmentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+            {appointment.symptoms && (
+              <p className="text-sm text-gray-500">
+                Symptoms: {appointment.symptoms}
+              </p>
+            )}
+          </div>
+          <Button 
+            variant="ghost" 
+            className="w-full mt-4"
+            onClick={() => router.push(`${ROUTES.APPOINTMENTS}/${appointment.id}`)}
+          >
+            View Details
+          </Button>
+        </motion.div>
+      ))}
+    </div>
+  </section>
+)}
       </main>
     </div>
   </div>

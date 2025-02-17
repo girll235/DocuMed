@@ -275,10 +275,23 @@ const clinics: Record<string, Clinic> = Object.fromEntries(
   const getAppointmentDate = (appointmentDue: Date | { toDate(): Date }): Date => {
     return appointmentDue instanceof Date ? appointmentDue : appointmentDue.toDate()
   }
-  const filteredAppointments = {
-    upcoming: appointments.filter(app => getAppointmentDate(app.appointmentDate) >= now),
-    past: appointments.filter(app => getAppointmentDate(app.appointmentDate) < now)
-  }
+// Update the filteredAppointments object
+const filteredAppointments = {
+  upcoming: appointments.filter(app => 
+    // Only show appointments that are:
+    // 1. Not rejected, cancelled, or completed
+    // 2. Have a future date
+    !['REJECTED', 'CANCELLED', 'COMPLETED'].includes(app.status) && 
+    getAppointmentDate(app.appointmentDate) >= now
+  ),
+  past: appointments.filter(app => 
+    // Show appointments that are either:
+    // 1. Rejected, cancelled, or completed
+    // 2. Have a past date
+    ['REJECTED', 'CANCELLED', 'COMPLETED'].includes(app.status) || 
+    getAppointmentDate(app.appointmentDate) < now
+  )
+};
 
   if (loading) {
     return (
