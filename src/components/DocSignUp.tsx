@@ -404,7 +404,6 @@ const DocSignUp = () => {
                     </FieldArray>
                   </div>
 
-                  // ...existing code...
 
 <div>
   <Label>Languages</Label>
@@ -449,7 +448,6 @@ const DocSignUp = () => {
   </FieldArray>
 </div>
 
-// ...existing code...
 
 <div>
   <Label htmlFor="email">Email</Label>
