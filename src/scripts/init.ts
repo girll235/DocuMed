@@ -3,7 +3,7 @@ import { resolve } from 'path';
 import { initializeDatabase } from './initializeDatabase';
 
 // Load environment variables from .env.local
-config({ path: resolve(process.cwd(), '.env.local') });
+config({ path: resolve(process.cwd(), '.env') });
 
 (async () => {
   try {

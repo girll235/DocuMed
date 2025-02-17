@@ -12,15 +12,42 @@ const requiredEnvVars = [
 ]
 
 const verifyEnv = () => {
-  // Try loading from .env.local first, then fall back to .env
-  const envPath = fs.existsSync(resolve(process.cwd(), '.env.local'))
-    ? resolve(process.cwd(), '.env.local')
-    : resolve(process.cwd(), '.env')
+  // Add debugging information
+  console.log('Environment:', process.env.NODE_ENV)
+  console.log('Current working directory:', process.cwd())
 
-  // Load environment variables
-  config({ path: envPath })
+  // Load environment variables in development or if explicitly requested
+  if (process.env.NODE_ENV !== 'production' || process.env.LOAD_ENV_FILE) {
+    const envFiles = ['.env.local', '.env']
+    let loaded = false
 
-  const missing = requiredEnvVars.filter(key => !process.env[key])
+    for (const file of envFiles) {
+      const envPath = resolve(process.cwd(), file)
+      if (fs.existsSync(envPath)) {
+        config({ path: envPath })
+        console.log(`Loaded environment variables from ${file}`)
+        loaded = true
+        break
+      }
+    }
+
+    if (!loaded) {
+      console.warn('No environment file found')
+    }
+  }
+
+  // Check for required variables
+  const missing = requiredEnvVars.filter(key => {
+    const value = process.env[key]
+    if (!value) {
+      console.error(`Missing ${key}`)
+      return true
+    }
+    // Debug: Log first few characters of each env var (safely)
+    console.log(`${key}: ${value.substring(0, 3)}...`)
+    return false
+  })
+
   if (missing.length > 0) {
     console.error('❌ Missing required environment variables:', missing.join(', '))
     process.exit(1)
