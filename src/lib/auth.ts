@@ -1,16 +1,15 @@
 import { auth, db } from './firebase';
 import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,  
   signOut as firebaseSignOut,
   updateProfile,
   sendPasswordResetEmail,
-  UserCredential 
+  
 } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { User, Doctor, Patient, AuthResponse } from '@/types';
+import {  Doctor, Patient, AuthResponse } from '@/types';
 import { AppError } from './errors';
-import { USER_ROLES, AUTH_ERRORS, COLLECTIONS } from './constants';
+import {  AUTH_ERRORS, COLLECTIONS } from './constants';
 
 export const authService = {
   login: async (email: string, password: string): Promise<AuthResponse> => {

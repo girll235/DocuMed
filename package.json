@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "init-db": "cross-env NODE_ENV=development ts-node -r dotenv/config -r tsconfig-paths/register -P ./tsconfig.scripts.json src/scripts/init.ts",
+    "verify-env": "ts-node -r tsconfig-paths/register src/scripts/verifyEnv.ts",
+    "prebuild": "npm run verify-env",
     "build": "next build",
+    "dev": "next dev --turbopack",
     "start": "next start",
     "lint": "next lint"
   },

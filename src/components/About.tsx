@@ -101,29 +101,29 @@ const About = () => {
 
         {/* Values Section */}
         <motion.div
-          className="mt-20"
-          initial={fadeIn.initial}
-          animate={fadeIn.animate}
-          transition={{ ...fadeIn.transition, delay: 0.6 }}
-        >
-          <Card className="p-8 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">Our Values</h2>
-              <p className="text-blue-100">The principles that guide our service</p>
-            </div>
-            <div className="grid md:grid-cols-3 gap-8">
-              {values.map((value, index) => (
-                <div key={value.title} className="text-center">
-                  <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
-                    {value.icon}
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">{value.title}</h3>
-                  <p className="text-blue-100">{value.description}</p>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </motion.div>
+  className="mt-20"
+  initial={fadeIn.initial}
+  animate={fadeIn.animate}
+  transition={{ ...fadeIn.transition, delay: 0.6 }}
+>
+  <Card className="p-8 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+    <div className="text-center mb-12">
+      <h2 className="text-3xl font-bold mb-4">Our Values</h2>
+      <p className="text-blue-100">The principles that guide our service</p>
+    </div>
+    <div className="grid md:grid-cols-3 gap-8">
+      {values.map((value) => (
+        <div key={value.title} className="text-center">
+          <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
+            {value.icon}
+          </div>
+          <h3 className="text-xl font-semibold mb-2">{value.title}</h3>
+          <p className="text-blue-100">{value.description}</p>
+        </div>
+      ))}
+    </div>
+  </Card>
+</motion.div>
       </div>
     </div>
   )

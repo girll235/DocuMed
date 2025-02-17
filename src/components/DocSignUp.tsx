@@ -4,11 +4,11 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { initializeDatabase } from "@/scripts/initializeDatabase"
-import { Formik, Form, FieldArray, FormikTouched, FormikErrors } from "formik"
+import { Formik, Form, FieldArray } from "formik"
 import Image from "next/image"
 import Link from "next/link"
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
-import { collection, addDoc, updateDoc, doc, getDocs, setDoc } from "firebase/firestore"
+import { collection, doc, getDocs, setDoc } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -404,12 +404,14 @@ const DocSignUp = () => {
                     </FieldArray>
                   </div>
 
+                  // ...existing code...
+
 <div>
   <Label>Languages</Label>
   <FieldArray name="languages">
     {({ push, remove }) => (
       <div className="space-y-2">
-        {values.languages.map((language, index) => (
+        {values.languages.map((_, index) => (  // Changed 'language' to '_' since we only need the index
           <div key={index} className="flex gap-2">
             <Input
               {...getFieldProps(`languages.${index}`)}
@@ -446,6 +448,8 @@ const DocSignUp = () => {
     )}
   </FieldArray>
 </div>
+
+// ...existing code...
 
 <div>
   <Label htmlFor="email">Email</Label>

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { authService } from "@/lib/auth"
 import { useUser } from "@/contexts/UserContext"
-import { ROUTES, USER_ROLES } from "@/lib/constants"
+import { ROUTES } from "@/lib/constants"
 import { Button } from "./ui/button"
 import Link from "next/link"
 import { toast } from "react-hot-toast"
@@ -16,7 +16,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Menu } from "lucide-react"
 
 const Navbar = () => {
   const router = useRouter()

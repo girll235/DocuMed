@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { collection, addDoc, Timestamp, doc, getDoc } from "firebase/firestore"
+import { collection, addDoc, doc, getDoc } from "firebase/firestore"
 import { motion } from "framer-motion"
 import { Loader2, X } from "lucide-react"
 import { db } from "@/lib/firebase"
-import { APPOINTMENT_STATUS, COLLECTIONS, ROUTES } from "@/lib/constants"
+import { COLLECTIONS, ROUTES } from "@/lib/constants"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"

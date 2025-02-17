@@ -7,13 +7,13 @@ import Image from "next/image"
 import Link from "next/link"
 import { useUser } from "@/contexts/UserContext"
 import { db } from "@/lib/firebase"
-import { COLLECTIONS, APPOINTMENT_STATUS, ROUTES } from "@/lib/constants"
+import { COLLECTIONS, ROUTES } from "@/lib/constants"
 import { Appointment, Doctor, Patient, Clinic } from "@/types"
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { format } from "date-fns"
 import { CalendarDays, Clock, MapPin, User2 } from "lucide-react"
-import { toast } from "react-hot-toast"
+
 import { getStatusColor, getStatusStyle } from "@/lib/utils"
 import { AppointmentStatus } from "@/types"
 import { getStatusIndicatorColor, calculateAge } from "@/lib/utils"
@@ -148,7 +148,6 @@ export const Appointments = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming")
   const { userData, role } = useUser()
 
   
@@ -271,15 +270,6 @@ const clinics: Record<string, Clinic> = Object.fromEntries(
   
     return () => unsubscribe();
   }, [userData?.id, role]);
-  const getStatusStyle = (status: string) => {
-    const styles: { [key: string]: string } = {
-      [APPOINTMENT_STATUS.PENDING]: "bg-yellow-100 text-yellow-800",
-      [APPOINTMENT_STATUS.APPROVED]: "bg-green-100 text-green-800",
-      [APPOINTMENT_STATUS.REJECTED]: "bg-red-100 text-red-800",
-      [APPOINTMENT_STATUS.RESCHEDULED]: "bg-orange-100 text-orange-800"
-    }
-    return styles[status] || "bg-gray-100 text-gray-800"
-  }
 
   const now = new Date()
   const getAppointmentDate = (appointmentDue: Date | { toDate(): Date }): Date => {
@@ -319,20 +309,18 @@ const clinics: Record<string, Clinic> = Object.fromEntries(
         <CardContent className="p-6">
           <Tabs defaultValue="upcoming" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-8">
-              <TabsTrigger
-                value="upcoming"
-                className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900"
-                onClick={() => setActiveTab("upcoming")}
-              >
-                Upcoming ({filteredAppointments.upcoming.length})
-              </TabsTrigger>
-              <TabsTrigger
-                value="past"
-                className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900"
-                onClick={() => setActiveTab("past")}
-              >
-                Past ({filteredAppointments.past.length})
-              </TabsTrigger>
+            <TabsTrigger
+  value="upcoming"
+  className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900"
+>
+  Upcoming ({filteredAppointments.upcoming.length})
+</TabsTrigger>
+<TabsTrigger
+  value="past"
+  className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900"
+>
+  Past ({filteredAppointments.past.length})
+</TabsTrigger>
             </TabsList>
 
             <TabsContent value="upcoming" className="space-y-6">

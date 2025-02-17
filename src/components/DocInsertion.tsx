@@ -35,7 +35,8 @@ const DocInsertion = () => {
   const { userData } = useUser()
   const [patient, setPatient] = useState<Patient | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
+  const [error, setError] = useState<string | null>(null)
+
 
   useEffect(() => {
     if (!searchParams) return  // Add early return if searchParams is null
@@ -116,7 +117,27 @@ const DocInsertion = () => {
       </div>
     )
   }
-
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="p-8 rounded-lg flex flex-col items-center text-center"
+        >
+          <div className="text-red-500 mb-4 text-xl">⚠️</div>
+          <p className="text-red-600 font-medium mb-4">{error}</p>
+          <Button
+            variant="outline"
+            onClick={() => router.back()}
+            className="mt-4"
+          >
+            Go Back
+          </Button>
+        </motion.div>
+      </div>
+    )
+  }
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-8">
       <div className="max-w-3xl mx-auto px-4">
@@ -151,7 +172,7 @@ const DocInsertion = () => {
                 validationSchema={medicalRecordSchema}
                 onSubmit={handleSubmit}
               >
-                {({ values, errors, touched, isSubmitting, setFieldValue }) => (
+                {({ values, errors, touched, isSubmitting }) => (
                   <Form className="space-y-8">
                     {/* Diagnosis Section */}
                     <div className="space-y-6">

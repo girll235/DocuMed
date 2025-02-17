@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Formik, Form, Field, FieldArray } from "formik"
+import { Formik, Form, Field } from "formik"
 import { motion } from "framer-motion"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { updatePassword } from "firebase/auth"
@@ -15,7 +15,7 @@ import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card"
 import { Select } from "@/components/ui/select"
 import { clientSchema, initialValues } from "@/lib/validation/clientSchema"
 import { ClientFormValues } from "@/types"
-import { Loader2, Plus, X } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { COLLECTIONS } from "@/lib/constants"
 
 export const ClientParams = () => {
@@ -359,7 +359,60 @@ export const ClientParams = () => {
                         </div>
                       </div>
                     </div>
+                    <div className="pt-8 border-t">
+  <h3 className="text-lg font-semibold text-gray-900 mb-6">
+    Change Password
+  </h3>
+  
+  <div className="space-y-4">
+    <div>
+      <Label htmlFor="currentPassword">Current Password</Label>
+      <Input
+        id="currentPassword"
+        type="password"
+        value={passwords.current}
+        onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
+        className="mt-1"
+      />
+    </div>
+    <div>
+      <Label htmlFor="newPassword">New Password</Label>
+      <Input
+        id="newPassword"
+        type="password"
+        value={passwords.new}
+        onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
+        className="mt-1"
+      />
+    </div>
 
+    <div>
+      <Label htmlFor="confirmPassword">Confirm New Password</Label>
+      <Input
+        id="confirmPassword"
+        type="password"
+        value={passwords.confirm}
+        onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+        className="mt-1"
+      />
+    </div>
+    <Button
+      type="button"
+      onClick={handlePasswordChange}
+      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+      disabled={isChangingPassword}
+    >
+      {isChangingPassword ? (
+        <div className="flex items-center justify-center">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <span>Changing Password...</span>
+        </div>
+      ) : (
+        "Change Password"
+      )}
+    </Button>
+  </div>
+</div>
                     <div className="pt-8 border-t">
                       <Button
                         type="submit"

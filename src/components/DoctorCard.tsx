@@ -1,5 +1,4 @@
 import Image from "next/image"
-import Link from "next/link"
 import { Doctor, Specialty, Clinic } from "@/types"
 import { useRouter } from "next/navigation"
 import { ROUTES } from "@/lib/constants"

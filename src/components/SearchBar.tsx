@@ -1,10 +1,3 @@
-import { CiSearch } from "react-icons/ci"
-
-interface SearchBarProps {
-  searchTerm: string
-  onSearchChange: (value: string) => void
-}
-
 export const SearchBar = ({ 
   searchTerm, 
   onSearchChange,

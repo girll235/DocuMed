@@ -1,5 +1,5 @@
 import { db } from '@/lib/firebase';
-import { collection, doc, writeBatch, setDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch} from 'firebase/firestore';
 import { COLLECTIONS, USER_ROLES, APPOINTMENT_STATUS } from '@/lib/constants';
 
 const createCollections = async () => {

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { CalendarDays, Clock, MapPin, User2, Filter } from "lucide-react"
+import { CalendarDays, Clock, User2, Filter } from "lucide-react"
 import { CiSearch } from "react-icons/ci"
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,7 @@ import { collection, query, where, getDocs, updateDoc, doc } from "firebase/fire
 import { db, auth } from "@/lib/firebase"
 import { useUser } from "@/contexts/UserContext"
 import { Doctor, Appointment, Patient, AppointmentStatus } from "@/types"
-import { COLLECTIONS, ROUTES, APPOINTMENT_STATUS } from "@/lib/constants"
+import { COLLECTIONS, ROUTES } from "@/lib/constants"
 import { toast } from "react-hot-toast"
 import { format } from "date-fns"
 import { confirm } from "@/lib/utils"
@@ -126,7 +126,6 @@ const DocDashboard = () => {
   const handleAction = async (
     appointmentId: string,
     action: "accept" | "reject" | "delay",
-    patientId: string,
     appointmentDate: Date
   ) => {
     try {
@@ -177,7 +176,6 @@ const DocDashboard = () => {
 
   const handleEditDecision = async (
     appointmentId: string, 
-    patientId: string, 
     currentStatus: string
   ) => {
     const confirmed = await confirm(
@@ -201,12 +199,7 @@ const DocDashboard = () => {
     }
   };
 
-  const formatDate = (date: Date | { toDate(): Date } | undefined): string => {
-    if (!date) return 'Invalid date'
-    if (date instanceof Date) return date.toLocaleString()
-    if ('toDate' in date) return date.toDate().toLocaleString()
-    return 'Invalid date'
-  }
+
 
   const filteredAppointments = appointments.filter((appointment) => {
     const searchLower = searchTerm.toLowerCase();
@@ -372,19 +365,27 @@ const DocDashboard = () => {
                             <td className="px-6 py-4">
   {appointment.status === 'PENDING' ? (
     <div className="flex space-x-2">
-      <Button
-        onClick={() => handleAction(
-          appointment.id, 
-          "accept", 
-          appointment.patientId,
-          appointment.appointmentDate
-        )}
-        variant="outline"
-        className="bg-green-50 text-green-700 hover:bg-green-100"
-      >
-        Accept
-      </Button>
-      {/* ... other buttons ... */}
+ <Button
+  onClick={() => handleAction(
+    appointment.id, 
+    "accept", 
+    appointment.appointmentDate
+  )}
+  variant="outline"
+  className="bg-green-50 text-green-700 hover:bg-green-100"
+>
+  Accept
+</Button>
+
+{/* Update the Edit Decision button */}
+<Button
+  onClick={() => handleEditDecision(appointment.id, appointment.status)}
+  variant="ghost"
+  className="text-blue-600 hover:text-blue-800"
+  size="sm"
+>
+  Edit Decision
+</Button>
     </div>
   ) : (
     <div className="flex items-center space-x-2">
@@ -396,7 +397,7 @@ const DocDashboard = () => {
         {appointment.status}
       </span>
           <Button
-            onClick={() => handleEditDecision(appointment.id, appointment.patientId, appointment.status)}
+            onClick={() => handleEditDecision(appointment.id, appointment.status)}
             variant="ghost"
             className="text-blue-600 hover:text-blue-800"
             size="sm"

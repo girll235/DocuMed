@@ -15,7 +15,7 @@ import { authService } from "@/lib/auth"
 import { ROUTES, USER_ROLES } from "@/lib/constants"
 import { toast } from "react-hot-toast"
 import { Loader2 } from "lucide-react"
-import { AuthResponse, Doctor } from "@/types"
+import { Doctor } from "@/types"
 
 const loginSchema = Yup.object().shape({
   email: Yup.string()

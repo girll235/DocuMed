@@ -316,15 +316,16 @@ const DoctorParams = () => {
                     </div>
                   </div>
 
+
 {/* Languages and Consultation */}
 <div className="doctor-form-section">
-                    <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
-                      Languages & Fees
-                    </h3>
+  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+    Languages & Fees
+  </h3>
   <FieldArray name="languages">
     {({ push, remove }) => (
       <div className="space-y-2">
-        {values.languages.map((language, index) => (
+        {values.languages.map((_, index) => (  // Changed 'language' to '_'
           <div key={index} className="flex gap-2">
             <Field
               as={Input}
@@ -363,6 +364,7 @@ const DoctorParams = () => {
   </FieldArray>
 </div>
 
+
 <div>
   <Label htmlFor="consultationFee">Consultation Fee</Label>
   <Field
@@ -384,7 +386,7 @@ const DoctorParams = () => {
                       Working Hours
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {Object.entries(values.workingHours).map(([day, hours]) => (
+                      {Object.entries(values.workingHours).map(([day]) => (
                         <div
                           key={day}
                           className="p-4 bg-gray-50 rounded-lg hover:shadow-md transition-all duration-200"

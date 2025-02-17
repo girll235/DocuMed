@@ -4,14 +4,12 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { motion } from "framer-motion"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ROUTES } from "@/lib/constants"
 import { ArrowLeft, Stethoscope, User } from "lucide-react"
 
 const SignUp = () => {
-  const router = useRouter()
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
 
   const cardVariants = {

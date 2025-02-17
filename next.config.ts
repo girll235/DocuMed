@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
   images: {
@@ -23,6 +23,11 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-};
+  // Add environment variable validation
+  onError: (err: Error) => {
+    console.error('Next.js build error:', err)
+    process.exit(1)
+  }
+}
 
-export default nextConfig;
+export default nextConfig
