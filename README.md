@@ -105,6 +105,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Contact
 Mohamed Yaakoubi - [@Mohamed Yaakoubi](https://www.linkedin.com/in/yaakoubi-mohamed/)
-Project Link: [https://github.com/mohamedyaakoubi/documed](https://github.com/mohamedyaakoubi/documed)
+Sabrine Ben Tili - [@girll235](https://www.linkedin.com/in/sabrine-ben-tili/)
+Project Link: [https://github.com/girll235/DocuMed/](https://github.com/girll235/DocuMed/)
 
 ---
